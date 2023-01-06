@@ -4,7 +4,7 @@
 	],
 	"copyright": "Copyright © 2023, user",
 	"description": "A minimal D application.",
-	"license": "proprietary",
+	"license": "boost",
 	"name": "rgb2gray-video",
 	"dependencies": {
         "oclcv": {"path": "../../"},
