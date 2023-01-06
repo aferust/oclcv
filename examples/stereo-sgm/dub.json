@@ -1,0 +1,18 @@
+{
+	"authors": [
+		"user"
+	],
+	"copyright": "Copyright © 2023, user",
+	"description": "A minimal D application.",
+	"license": "boost",
+	"name": "stereo-sgm",
+	"dependencies": {
+        "oclcv": {"path": "../../"},
+		"bindbc-opencl": "~>0.1.0",
+        "mir-algorithm": ">=3.15.3",
+        "dcv:core": "*",
+        "dcv:imageio": "*",
+		"dcv:plot": "*"
+
+	}
+}

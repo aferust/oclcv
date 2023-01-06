@@ -1,0 +1,15 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/stereo-sgm
+stereo-sgm.so
+stereo-sgm.dylib
+stereo-sgm.dll
+stereo-sgm.a
+stereo-sgm.lib
+stereo-sgm-test-*
+*.exe
+*.o
+*.obj
+*.lst
