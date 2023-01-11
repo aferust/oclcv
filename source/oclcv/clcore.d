@@ -516,5 +516,7 @@ void _assert(bool condition, string msg, string file = __FILE__, int line = __LI
 enum CTKernel {
     KGRAY = import("gray.cl"),
     KYUV = import("yuv.cl"),
-    KSGM = import("sgm.cl")
+    KHSV = import("hsv.cl"),
+    KSGM = import("sgm.cl"),
+    KINRANGE3 = import("inrange3.cl")
 }

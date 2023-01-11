@@ -55,7 +55,6 @@ private:
     CLBuffer d_gray;
 }
 
-// -D depth=0 -D PIX_PER_WI_Y=4
 final class YUV2RGB {
 public:
     this(int height, int width, CLContext ctx){
@@ -108,4 +107,112 @@ private:
     CLKernel YUV2RGB_kernel;
     
     CLBuffer d_rgb;
+}
+
+final class RGB2HSV {
+public:
+    this(int height, int width, CLContext ctx){
+        width_ = width; height_= height;
+        initialize(ctx);
+    }
+
+    ~this(){
+        destroy(prog_);
+    }
+
+    bool initialize(CLContext ctx){
+        if(!ctx)
+            return false;
+        context_ = ctx;
+        
+        prog_ = new CLProgram(CTKernel.KHSV, context_);
+        
+        RGB2HSV_kernel = prog_.getKernel("rgb2hsv");
+
+        d_hsv = new CLBuffer(context_, BufferMeta(UBYTE, height_, width_, 3));
+        
+        return true;
+    }
+
+    CLBuffer run(CLBuffer d_src_rgb){
+        debug _assert(d_src_rgb.metaData.dataType == UBYTE, "Input type must be ubyte"); 
+        debug _assert(d_src_rgb.metaData.numberOfChannels == 3, "Input's channel count must be 3");
+
+        struct _int2 {int x, y;}
+        auto sz = _int2(width_, height_);
+        RGB2HSV_kernel.setArgs(d_src_rgb, d_hsv, sz);
+        
+        convert();
+
+        return d_hsv;
+    }
+
+    void convert(){
+        RGB2HSV_kernel.launch(0, GridDim((width_ + 16 - 1)/16, (height_ + 16 - 1)/16),
+                                                                    BlockDim(16,16));
+        context_.finish(0);
+    }
+
+private:
+    int width_, height_;
+    CLContext context_;
+    CLProgram prog_;
+
+    CLKernel RGB2HSV_kernel;
+    
+    CLBuffer d_hsv;
+}
+
+final class INRANGE3 {
+public:
+    this(int height, int width, CLContext ctx){
+        width_ = width; height_= height;
+        initialize(ctx);
+    }
+
+    ~this(){
+        destroy(prog_);
+    }
+
+    bool initialize(CLContext ctx){
+        if(!ctx)
+            return false;
+        context_ = ctx;
+        
+        prog_ = new CLProgram(CTKernel.KINRANGE3, context_);
+        inRange_kernel = prog_.getKernel("inRange3");
+
+        d_bool = new CLBuffer(context_, BufferMeta(UBYTE, height_, width_, 1));
+        
+        return true;
+    }
+
+    CLBuffer run(CLBuffer d_src_3c, ubyte lo0, ubyte hi0, ubyte lo1, ubyte hi1, ubyte lo2, ubyte hi2,
+            bool inverse = false){
+        debug _assert(d_src_3c.metaData.dataType == UBYTE, "Input type must be ubyte"); 
+        debug _assert(d_src_3c.metaData.numberOfChannels == 3, "Input's channel count must be 3");
+
+        struct _int2 {int x, y;}
+        auto sz = _int2(width_, height_);
+        inRange_kernel.setArgs(d_src_3c, d_bool, sz, lo0, hi0, lo1, hi1, lo2, hi2, (inverse)?1:0);
+        
+        _threshold();
+
+        return d_bool;
+    }
+
+    void _threshold(){
+        inRange_kernel.launch(0, GridDim((width_ + 16 - 1)/16, (height_ + 16 - 1)/16),
+                                                                    BlockDim(16,16));
+        context_.finish(0);
+    }
+
+private:
+    int width_, height_;
+    CLContext context_;
+    CLProgram prog_;
+
+    CLKernel inRange_kernel;
+    
+    CLBuffer d_bool;
 }

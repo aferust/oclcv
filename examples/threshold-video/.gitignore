@@ -1,0 +1,16 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/stereo
+stereo.so
+stereo.dylib
+stereo.dll
+stereo.a
+stereo.lib
+stereo-test-*
+*.exe
+*.dll
+*.o
+*.obj
+*.lst
