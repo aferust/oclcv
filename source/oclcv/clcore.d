@@ -207,15 +207,15 @@ struct BufferMeta {
 final class CLBuffer {
 public:
     this(CLContext ctx, BufferMeta buffer_meta, MemFlag flag = MEM_FLAG_READ_WRITE,
-             void* host_ptr = null)
+             void[] host_data = null)
     {
         meta_data = buffer_meta;
 
-        this(ctx, buffer_meta.memorySize(), flag, host_ptr);
+        this(ctx, buffer_meta.memorySize(), flag, host_data);
     }
     
     private this(CLContext ctx, size_t size, MemFlag flag = MEM_FLAG_READ_WRITE,
-             void* host_ptr = null){
+             void[] host_data = null){
         context_ = ctx;
         flag_ = flag;
 
@@ -223,8 +223,9 @@ public:
         buffer_ = clCreateBuffer(context_.getCLContext(), getCLMemFlag(flag),
                                                         size_, null, &err);
         handleError(err, "creating buffer");
-        if(host_ptr)
-            upload(host_ptr, SYNC_MODE_BLOCKING, 0);
+        if(host_data){
+            upload(host_data, SYNC_MODE_BLOCKING, 0);
+        }
     }
     
     ~this(){
@@ -262,14 +263,16 @@ public:
 
     bool isNull(){return buffer_ == null;}
     
-    void upload(const void* data, SyncMode block_queue = SYNC_MODE_BLOCKING,
+    void upload(const(void)[] data, SyncMode block_queue = SYNC_MODE_BLOCKING,
                int command_queue = 0){
-        upload(data, 0, size_, block_queue, command_queue);
+        debug _assert(data.length == metaData().memorySize(), "Mismatch in source and destination memory sizes.");
+        upload(data.ptr, 0, size_, block_queue, command_queue);
     }
 
-    void download(void* data, SyncMode block_queue = SYNC_MODE_BLOCKING,
+    void download(void[] data, SyncMode block_queue = SYNC_MODE_BLOCKING,
               int command_queue = 0){
-        download(data, 0, size_, block_queue, command_queue);
+        debug _assert(data.length == metaData().memorySize(), "Mismatch in source and destination memory sizes.");
+        download(data.ptr, 0, size_, block_queue, command_queue);
     }
 
     cl_mem getCObject(){

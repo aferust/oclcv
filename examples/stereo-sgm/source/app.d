@@ -31,8 +31,8 @@ void main()
     
     auto d_left_rgb = new CLBuffer(context, BufferMeta(UBYTE, height, width, 3));
     auto d_right_rgb = new CLBuffer(context, BufferMeta(UBYTE, height, width, 3));
-    d_left_rgb.upload(leftrgb.ptr);
-    d_right_rgb.upload(rightrgb.ptr);
+    d_left_rgb.upload(leftrgb.ptr[0..leftrgb.elementCount]);
+    d_right_rgb.upload(rightrgb.ptr[0..rightrgb.elementCount]);
     
     CLBuffer d_left_gray = convl.run(d_left_rgb);
     CLBuffer d_right_gray = convr.run(d_right_rgb);
@@ -44,7 +44,7 @@ void main()
     clock_t begin = clock();
     
         auto d_dispmap = ssgm.run(d_left_gray, d_right_gray);
-        d_dispmap.download(disp.ptr);
+        d_dispmap.download(disp.ptr[0..disp.elementCount]);
     
     clock_t end = clock(); printf("Elapsed time: %f \n", cast(double)(end - begin) / CLOCKS_PER_SEC);
 

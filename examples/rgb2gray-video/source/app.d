@@ -59,9 +59,9 @@ void main()
         // If we didn't get a frame of video, we're probably at the end
         if (dt.length != H*W*3) break;
 
-        d_rgb.upload(frame.ptr);
+        d_rgb.upload(frame.ptr[0..frame.elementCount]);
         auto d_gray = conv.run(d_rgb);
-        d_gray.download(gray.ptr);
+        d_gray.download(gray.ptr[0..gray.elementCount]);
 
         auto figGray = imshow(gray, "gray");
         int wait = max(1, cast(int)waitFrame - cast(int)s.peek.total!"msecs");
