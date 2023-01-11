@@ -10,6 +10,7 @@ stereo.a
 stereo.lib
 stereo-test-*
 *.exe
+*.dll
 *.o
 *.obj
 *.lst

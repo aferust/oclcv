@@ -4,7 +4,7 @@ import oclcv.clcore;
 
 final class RGB2GRAY {
 public:
-    this(int width, int height, CLContext ctx){
+    this(int height, int width, CLContext ctx){
         width_ = width; height_= height;
         initialize(ctx);
     }
@@ -58,7 +58,7 @@ private:
 // -D depth=0 -D PIX_PER_WI_Y=4
 final class YUV2RGB {
 public:
-    this(int width, int height, CLContext ctx){
+    this(int height, int width, CLContext ctx){
         width_ = width; height_= height;
         initialize(ctx);
     }

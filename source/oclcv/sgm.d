@@ -6,7 +6,7 @@ import oclcv.clcore;
 
 final class StereoSGMCL{
 public:
-    this(int width, int height, int disp_size, CLContext ctx){
+    this(int height, int width, int disp_size, CLContext ctx){
 
         width_ = width; height_= height; disp_size_ = disp_size;
         auto r = initialize(ctx);

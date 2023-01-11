@@ -26,8 +26,8 @@ void main()
     size_t height = leftrgb.shape[0];
     size_t width = leftrgb.shape[1];
 
-    ColorConv convl = new ColorConv(cast(int)width, cast(int)height, context);
-    ColorConv convr = new ColorConv(cast(int)width, cast(int)height, context);
+    auto convl = new RGB2GRAY(cast(int)height, cast(int)width, context);
+    auto convr = new RGB2GRAY( cast(int)height, cast(int)width, context);
     
     auto d_left_rgb = new CLBuffer(context, BufferMeta(UBYTE, height, width, 3));
     auto d_right_rgb = new CLBuffer(context, BufferMeta(UBYTE, height, width, 3));
@@ -39,7 +39,7 @@ void main()
 
     auto disp = slice!short([height, width], 0);
     int disp_size = 128;
-    StereoSGMCL ssgm = new StereoSGMCL(cast(int)width, cast(int)height, disp_size, context);
+    StereoSGMCL ssgm = new StereoSGMCL(cast(int)height, cast(int)width, disp_size, context);
 
     clock_t begin = clock();
     

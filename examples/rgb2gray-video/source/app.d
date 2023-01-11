@@ -37,7 +37,7 @@ void main()
         "-pix_fmt", "rgb24", "-"], Redirect.stdout);
     
     // scope(exit) wait(pipes.pid);
-    auto conv = new RGB2GRAY(640, 480, context);
+    auto conv = new RGB2GRAY(H, W, context);
     auto d_rgb = new CLBuffer(context, BufferMeta(UBYTE, H, W, 3));
 
     // Process video frames

@@ -10,6 +10,7 @@ stereo-sgm.a
 stereo-sgm.lib
 stereo-sgm-test-*
 *.exe
+*.dll
 *.o
 *.obj
 *.lst
