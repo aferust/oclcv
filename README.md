@@ -1,1 +1,1 @@
-A collection of OpenCL kernels for image processing targeting OpenCL 1.2 (WIP)
+A collection of OpenCL kernels for image processing in Dlang targeting OpenCL 1.2 (WIP)
