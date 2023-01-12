@@ -109,10 +109,16 @@ private:
     CLBuffer d_rgb;
 }
 
-final class RGB2HSV {
+enum {
+    HSV2RGB,
+    RGB2HSV
+}
+
+final class HSVConv {
 public:
-    this(int height, int width, CLContext ctx){
-        width_ = width; height_= height;
+
+    this(int height, int width, int conversion, CLContext ctx){
+        width_ = width; height_= height; _conversion = conversion;
         initialize(ctx);
     }
 
@@ -127,40 +133,47 @@ public:
         
         prog_ = new CLProgram(CTKernel.KHSV, context_);
         
-        RGB2HSV_kernel = prog_.getKernel("rgb2hsv");
-
-        d_hsv = new CLBuffer(context_, BufferMeta(UBYTE, height_, width_, 3));
+        if(_conversion == RGB2HSV)
+            conv_kernel = prog_.getKernel("rgb2hsv");
+        else if (_conversion == HSV2RGB)
+            conv_kernel = prog_.getKernel("hsv2rgb");
+        else {
+            debug _assert(0, "unsupported conversion from/to HSV!");
+        }
+            
+        d_dst = new CLBuffer(context_, BufferMeta(UBYTE, height_, width_, 3));
         
         return true;
     }
 
-    CLBuffer run(CLBuffer d_src_rgb){
-        debug _assert(d_src_rgb.metaData.dataType == UBYTE, "Input type must be ubyte"); 
-        debug _assert(d_src_rgb.metaData.numberOfChannels == 3, "Input's channel count must be 3");
+    CLBuffer run(CLBuffer d_src){
+        debug _assert(d_src.metaData.dataType == UBYTE, "Input type must be ubyte"); 
+        debug _assert(d_src.metaData.numberOfChannels == 3, "Input's channel count must be 3");
 
         struct _int2 {int x, y;}
         auto sz = _int2(width_, height_);
-        RGB2HSV_kernel.setArgs(d_src_rgb, d_hsv, sz);
+        conv_kernel.setArgs(d_src, d_dst, sz);
         
         convert();
 
-        return d_hsv;
+        return d_dst;
     }
 
     void convert(){
-        RGB2HSV_kernel.launch(0, GridDim((width_ + 16 - 1)/16, (height_ + 16 - 1)/16),
+        conv_kernel.launch(0, GridDim((width_ + 16 - 1)/16, (height_ + 16 - 1)/16),
                                                                     BlockDim(16,16));
         context_.finish(0);
     }
 
 private:
     int width_, height_;
+    int _conversion;
     CLContext context_;
     CLProgram prog_;
 
-    CLKernel RGB2HSV_kernel;
+    CLKernel conv_kernel;
     
-    CLBuffer d_hsv;
+    CLBuffer d_dst;
 }
 
 final class INRANGE3 {

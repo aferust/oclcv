@@ -36,7 +36,7 @@ void main()
     
     // scope(exit) wait(pipes.pid);
     auto thresholder = new INRANGE3(H, W, context);
-    auto rgb2hsvconv = new RGB2HSV(H, W, context);
+    auto rgb2hsvconv = new HSVConv(H, W, RGB2HSV, context);
 
     auto d_rgb = new CLBuffer(context, BufferMeta(UBYTE, H, W, 3));
 
@@ -44,6 +44,7 @@ void main()
     auto frame = slice!ubyte([H, W, 3], 0);
     auto grayBool = slice!ubyte([H, W], 0);
     
+    auto figGray = imshow(grayBool, "grayBool");
 
     double fps = 30.0;
     double waitFrame = 1.0;
@@ -68,7 +69,8 @@ void main()
         
         d_bool.download(grayBool.ptr[0..grayBool.elementCount]);
 
-        auto figGray = imshow(grayBool, "grayBool");
+        figGray.draw(grayBool, ImageFormat.IF_MONO);
+        
         int wait = max(1, cast(int)waitFrame - cast(int)s.peek.total!"msecs");
         
         if (waitKey(wait) == KEY_ESCAPE)
