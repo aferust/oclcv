@@ -7,9 +7,10 @@
         "bindbc-opencl": "~>0.1.0"
     },
     "versions": ["CL_12"],
-    "description": "A collection of OpenCL kernels for image processing",
+    "description": "A collection of OpenCL kernels for image processing in Dlang",
     "license": "BSL 1.0",
     "name": "oclcv",
+    "version": "0.0.1",
     "targetType": "library",
     "sourceFiles": ["source/oclcv/package.d"],
     "stringImportPaths": [
