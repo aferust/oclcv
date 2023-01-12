@@ -44,6 +44,8 @@ void main()
     auto frame = slice!ubyte([H, W, 3], 0);
     auto gray = slice!ubyte([H, W], 0);
 
+    auto figGray = imshow(gray, "gray");
+
     double fps = 30.0;
     double waitFrame = 1.0;
     StopWatch s;
@@ -63,7 +65,8 @@ void main()
         auto d_gray = conv.run(d_rgb);
         d_gray.download(gray.ptr[0..gray.elementCount]);
 
-        auto figGray = imshow(gray, "gray");
+        figGray.draw(gray, ImageFormat.IF_MONO);
+        
         int wait = max(1, cast(int)waitFrame - cast(int)s.peek.total!"msecs");
         
         if (waitKey(wait) == KEY_ESCAPE)
