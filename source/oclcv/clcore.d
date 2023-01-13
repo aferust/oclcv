@@ -623,5 +623,6 @@ enum CTKernel {
     KYUV = import("yuv.cl"),
     KHSV = import("hsv.cl"),
     KSGM = import("sgm.cl"),
-    KINRANGE3 = import("inrange3.cl")
+    KINRANGE3 = import("inrange3.cl"),
+    KCOUNTNONZERO = import("countnonzero.cl")
 }
