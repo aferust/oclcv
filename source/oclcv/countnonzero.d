@@ -41,8 +41,8 @@ public:
 
         ulong ret;
         d_count.upload((&ret)[0..1]);
-        struct _int2 {int x, y;}
-        auto sz = _int2(width_, height_);
+        
+        int[2] sz = [width_, height_];
         _kernel.setArgs(d_src_mono, cval, d_count, sz);
         
         compute();
