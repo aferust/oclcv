@@ -211,10 +211,10 @@ public:
     {
         meta_data = buffer_meta;
 
-        this(ctx, buffer_meta.memorySize(), flag, host_data);
+        this(ctx, flag, host_data);
     }
     
-    private this(CLContext ctx, size_t size, MemFlag flag = MEM_FLAG_READ_WRITE,
+    private this(CLContext ctx, MemFlag flag = MEM_FLAG_READ_WRITE,
              void[] host_data = null){
         context_ = ctx;
         flag_ = flag;
