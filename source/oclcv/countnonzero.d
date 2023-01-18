@@ -21,7 +21,7 @@ public:
         destroy(prog_);
     }
 
-    bool initialize(CLContext ctx){
+    private bool initialize(CLContext ctx){
         if(!ctx)
             return false;
         context_ = ctx;
@@ -51,7 +51,7 @@ public:
         return ret;
     }
 
-    void compute(){
+    private void compute(){
         _kernel.launch(0, GridDim((width_ + 16 - 1)/16, (height_ + 16 - 1)/16),
                                                                     BlockDim(16,16));
         context_.finish(0);
