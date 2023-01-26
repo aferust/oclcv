@@ -7,7 +7,6 @@ import dcv.core;
 import dcv.plot.figure;
 
 import mir.ndslice;
-import bindbc.opencl;
 
 import oclcv;
 
@@ -18,9 +17,6 @@ enum H = 480;
 
 void main()
 {
-    auto _ret = loadOpenCL();
-    writeln("Load CL: ", _ret);
-
     CLContext context = new CLContext;
     context.clInfo().writeln;
     

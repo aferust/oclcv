@@ -8,15 +8,10 @@ import dcv.plot, dcv.imageio, dcv.imgproc, dcv.core;
 
 import mir.ndslice;
 
-import bindbc.opencl;
-
 import oclcv;
 
 void main()
 {
-    auto _ret = loadOpenCL();
-    writeln("Load CL: ", _ret);
-
     CLContext context = new CLContext;
     context.clInfo().writeln;
 

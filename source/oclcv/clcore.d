@@ -40,6 +40,9 @@ enum : SyncMode
 final class CLContext {
 public:
     this(int platform_id = 0, int device_id = 0, int num_streams = 1){
+        
+        loadDLib();
+
         cl_platform_id p_id;
         cl_int err = 0;
         cl_uint num_platforms, num_divices;
@@ -140,6 +143,18 @@ private:
         return str.to!string;
     }
 
+    void loadDLib(){
+        if(CLContext.support_ == CLSupport.noLibrary){
+            support_ = loadOpenCL();
+            debug writeln("Load CL: ", _ret);
+            if(CLContext.support_ == CLSupport.noLibrary || CLContext.support_ == CLSupport.badLibrary){
+                debug _assert(0, "Problem loading opencl dynamic library");
+            }
+        }
+        
+    }
+
+    static CLSupport support_ = CLSupport.noLibrary;
     cl_command_queue[] cl_command_queues_;
     string cl_info_;
     cl_context cl_context_;
