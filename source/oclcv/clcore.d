@@ -145,8 +145,8 @@ private:
 
     void loadDLib(){
         if(CLContext.support_ == CLSupport.noLibrary){
-            support_ = loadOpenCL();
-            debug writeln("Load CL: ", _ret);
+            CLContext.support_ = loadOpenCL();
+            debug writeln("Load CL: ", CLContext.support_);
             if(CLContext.support_ == CLSupport.noLibrary || CLContext.support_ == CLSupport.badLibrary){
                 debug _assert(0, "Problem loading opencl dynamic library");
             }
