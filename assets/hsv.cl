@@ -28,8 +28,8 @@ __kernel void rgb2hsv(
     
     h /= 2.0f; // map Hue between 0-180
 
-    auto s = (uchar)(100.0f * (cmax == 0 ? 0 : cdelta / cmax));
-    auto v = (uchar)(100.0f * cmax);
+    uchar s = (uchar)(100.0f * (cmax == 0 ? 0 : cdelta / cmax));
+    uchar v = (uchar)(100.0f * cmax);
 
     dst_hsv[3*gid1 + 0] = h;
     dst_hsv[3*gid1 + 1] = s;
@@ -74,8 +74,8 @@ __kernel void hsv2rgb(
     else
         h /= 60.0f;
 
-    auto hh = (int)h;
-    auto ff = h - (float)hh;
+    int hh = (int)h;
+    float ff = h - (float)hh;
 
     float p = v * (1.0f - s);
     float q = v * (1.0f - (s * ff));

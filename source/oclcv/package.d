@@ -5,4 +5,5 @@ public {
     import oclcv.color;
     import oclcv.sgm;
     import oclcv.countnonzero;
+    import oclcv.morphed;
 }

@@ -438,7 +438,9 @@ public:
         handleError(err, "creating program with source data");
         cl_device_id dev_id = context_.getDevId();
         err = clBuildProgram(cl_program_, 1, &dev_id, cop.ptr, null, null);
-        handleError(err, "building program.");
+
+        import std.format, std.conv : to;
+        handleError(err, format("building program with source: %s\nUsing compilation options: %s\n", source.to!string, compilation_options));
         return true;
     }
 
@@ -639,5 +641,6 @@ enum CTKernel {
     KHSV = import("hsv.cl"),
     KSGM = import("sgm.cl"),
     KINRANGE3 = import("inrange3.cl"),
-    KCOUNTNONZERO = import("countnonzero.cl")
+    KCOUNTNONZERO = import("countnonzero.cl"),
+    KMORPHED = import("morphed.cl")
 }
