@@ -8,9 +8,9 @@ immutable int Hmin1 = 52, Smin1 = 50, Vmin1 = 0;
 immutable int Hmax1 = 104, Smax1 = 255, Vmax1 = 125;
 
 /////////////////////////// set above for a desired color ////////////////////
-enum a1 = 5; // kernel size and interations of Morphology Transform
+enum a1 = 3; // kernel size and interations of Morphology Transform
 enum i1 = 1;
-enum a2 = 5; 
+enum a2 = 3; 
 enum i2 = 1;
 
 
@@ -49,18 +49,18 @@ public:
         auto d_hsv = rgb2hsvconv.run(d_rgb);
         auto d_thresh1 = thresholder.run(d_hsv, Hmin1, Hmax1, Smin1, Smax1, Vmin1, Vmax1);
         
-        foreach (i; 0..i1) // morph opening
-        {
+        //foreach (i; 0..i1) // morph opening
+        //{
             d_thresh1 = eroder.run(d_thresh1);
             d_thresh1 = dilater.run(d_thresh1);
             
-        }
+        //}
         
-        foreach (i; 0..i2) // morp closing
-        {
+        //foreach (i; 0..i2) // morp closing
+        //{
             d_thresh1 = dilater.run(d_thresh1);
             d_thresh1 = eroder.run(d_thresh1);
-        }
+        //}
         
         d_thresh1.download(thresh1.ptr[0..thresh1.elementCount]);
     }
