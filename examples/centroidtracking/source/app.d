@@ -7,12 +7,12 @@ import std.datetime.stopwatch : StopWatch;
 import dcv.core;
 import dcv.plot;
 import dcv.measure;
+import dcv.tracking.centroidtracker;
 
 import mir.ndslice;
-
 import oclcv;
 
-import centroidtracker;
+
 import preprocessor;
 
 // compile release for speed: dub -b release
@@ -134,16 +134,12 @@ void main()
                     t = typeObj(0, area);
                 }
                 
-                //if((t == 1) || (t == 3))
+                //if((t == 1) || (t == 3)) // filter your target objects
                     boxes ~= [xj, yj, xj + wj, yj + hj].staticArray!int;
             }
         }
         
         auto objects = centroidTracker.update(boxes);
-        
-        import std.range;
-        writeln(contours.length, "   ", objects.walkLength);
-        
         
         if (!objects.empty()) {
             foreach (obj; objects) {
