@@ -19,29 +19,33 @@ import preprocessor;
 // Video resolution
 enum W = 640;
 enum H = 480;
+enum DSHOW_DEV_NAME = `video=` ~ `Lenovo EasyCamera`;
 
-enum minArea = 500; //3000; // min area to confirm these are objects 
-enum minObject = 500; //5000; // min area to ensure removed-object
-enum smallObj = 2000;//5000; //11000; // small Object
-enum redPercent = 30;  // ratio percent of RED
-enum detectBorder = true;
+enum minArea = 2000; // min area to confirm these are objects 
+enum minObject = 5000; // min area to ensure removed-object
+enum smallObj = 11000; //11000; // small Object
+enum colorPercent = 30;  // ratio percent of RED
+enum detectBorder = false;
+
+///////////////////////////////// set above /////////////////////////////////////////////////////
+
+import std.conv : to;
+enum WS = W.to!string;
+enum HS = H.to!string;
+enum SIZE_STR = WS ~ "x" ~ HS;
 
 void main()
 {
-    //CLContext context = new CLContext;
-    //context.clInfo().writeln;
-
-    
     auto centroidTracker = CentroidTracker(20);
-    auto prep = new Preprocessor(H, W);
+    auto prep = Preprocessor(H, W);
 
     // for video file as input
     /*auto pipes = pipeProcess(["ffmpeg", "-i", "file_example_MP4_640_3MG.mp4", "-f", "image2pipe",
-     "-vcodec", "rawvideo", "-pix_fmt", "rgb24", "-"], // yuv420p
+     "-vcodec", "rawvideo", "-pix_fmt", "rgb24", "-"],
         Redirect.stdout);*/
     // for camera device as input
-    auto pipes = pipeProcess(["ffmpeg", "-y", "-hwaccel", "auto", "-f", "dshow", "-video_size", "640x480", "-i",
-        `video=Lenovo EasyCamera`, "-framerate", "30", "-f", "image2pipe", "-vcodec", "rawvideo", 
+    auto pipes = pipeProcess(["ffmpeg", "-y", "-hwaccel", "auto", "-f", "dshow", "-video_size", SIZE_STR, "-i",
+        DSHOW_DEV_NAME, "-framerate", "30", "-f", "image2pipe", "-vcodec", "rawvideo", 
         "-pix_fmt", "rgb24", "-"], Redirect.stdout);
     
     
@@ -51,7 +55,7 @@ void main()
     
     
     auto figDetection = imshow(frame, "Detection");
-    auto figThr1 = imshow(thr1, "thr1");
+    // auto figThr1 = imshow(thr1, "thr1"); // to debug preprocessing
 
     double fps = 30.0;
     double waitFrame = 1.0;
@@ -74,17 +78,22 @@ void main()
         immutable yLen = H;
 
         prep.binarize(frame);
-        figThr1.draw(prep.thresh1, ImageFormat.IF_MONO);
+        // figThr1.draw(prep.thresh1, ImageFormat.IF_MONO);
 
         Array!Box boxes;
         scope(exit) boxes.clear;
 
         auto contours_hier = findContours(prep.thresh1);
         auto contours = contours_hier[0];
+        auto hierarchy = contours_hier[1];
 
+        import mir.math.stat: mean;
         if (contours.length){
-            foreach(contour; contours){
-                const int area = cast(int)(contour.contourArea/1000.0)*1000; //rounding number
+            auto indNoHoles = indicesWithoutHoles(hierarchy);
+            foreach(ci; indNoHoles){
+                auto contour = contours[ci];
+                
+                const int area = cast(int)(contour.contourArea/1000.0)*1000;
                 if (area < minArea)
                     continue;
                 bool flagBorder = false;
@@ -105,7 +114,7 @@ void main()
                 const wj = cast(int)rect.width;
                 const hj = cast(int)rect.height;
                 
-                auto thresh_i = prep.thresh1[yj..yj+hj, xj..xj+wj];//.slice;
+                auto thresh_i = prep.thresh1[yj..yj+hj, xj..xj+wj];
                 
                 auto ret_i = findContours(thresh_i);
                 auto contours_i = ret_i[0];
@@ -118,8 +127,8 @@ void main()
                         const sii = contourArea(cnt);
                         si += cast(ulong)(sii);
                     }
-                    si = cast(ulong)(si/1000)*1000;
-                    const int ratio_i = cast(int)(cast(int)(si/area*100)/5)*5;
+                    si = cast(ulong)(cast(float)si/1000.0f)*1000;
+                    const int ratio_i = cast(int)(cast(int)(cast(float)si/area*100)/5.0f)*5;
                     t = typeObj(ratio_i, area);
                 }else{
                     t = typeObj(0, area);
@@ -129,15 +138,24 @@ void main()
                     boxes ~= [xj, yj, xj + wj, yj + hj].staticArray!int;
             }
         }
-
-        centroidTracker.update(boxes);
-        auto objects = centroidTracker.getObjects;
-
+        
+        auto objects = centroidTracker.update(boxes);
+        
+        import std.range;
+        writeln(contours.length, "   ", objects.walkLength);
+        
+        
         if (!objects.empty()) {
-            foreach (obj; objects[]) {
+            foreach (obj; objects) {
 
-                figDetection.drawCircle(PlotCircle(cast(float)obj[1][1], cast(float)obj[1][0], 36.0f), plotRed);
-
+                //figDetection.drawCircle(PlotCircle(cast(float)obj[1][1], cast(float)obj[1][0], 36.0f), plotRed, false, 2.0f);
+                immutable box = obj.box;
+                PlotPoint[2] rect = [
+                    PlotPoint(cast(float)box[1], cast(float)box[0]),
+                    PlotPoint(cast(float)(box[3]), cast(float)(box[2]))
+                ];
+                
+                figDetection.drawRectangle(rect, plotRed, 2.0f);
                 /*string ID = std::to_string(get<0>(obj));
                 cv::putText(cameraFrame, ID, Point(get<1>(obj).first - 10, get<1>(obj).second - 10),
                             FONT_HERSHEY_COMPLEX, 0.5, Scalar(0, 255, 0), 2);*/
@@ -147,43 +165,31 @@ void main()
                                      , Point(get<2>(obj)[2], get<2>(obj)[3]),
                                      Scalar(0, 255, 0), 2);*/
             }
-
             
             import core.stdc.math : sqrtf;
-            import std.range : popFrontN;
-
-            auto pathKeeper = centroidTracker.getPathKeeper();
             
             //drawing the path
-            foreach (obj; objects[]) {
+            foreach (obj; objects) {
                 int k = 1;
-                auto dl = pathKeeper[obj[0]];
-                auto rn = dl[];
-                auto first = rn.front;
-                rn.popFrontN(1);
-                while (!rn.empty){
+                auto path = centroidTracker.pathKeeper[obj.id];
+                for (auto i = 1; i < path.length; i++) {
                     float thickness = sqrtf(20.0f / cast(float)(k + 1) * 2.5f);
-                    auto next = rn.front;
+                    auto first = path[i - 1];
+                    auto next  = path[i];
                     figDetection.drawLine(
-                             PlotPoint(first[1], 
-                                first[0]),
-                             PlotPoint(next[1], 
-                                next[0]),
-                             plotBlue, thickness);
-                    k += 1;
-                    rn.popFrontN(1);
-                    first = next;
+                            PlotPoint(first.y, first.x), PlotPoint(next.y,
+                            next.x), plotBlue, thickness);
                 }
             }
         }
         
-        int wait = max(1, cast(int)waitFrame - cast(int)s.peek.total!"msecs");
+        const wait = max(1, cast(int)waitFrame - cast(int)s.peek.total!"msecs");
         
 
         if (waitKey(wait) == KEY_ESCAPE)
             break;
 
-        if (!figDetection.visible && !figThr1.visible)
+        if (!figDetection.visible/* && !figThr1.visible*/)
             break;
     }
     
@@ -191,7 +197,7 @@ void main()
 }
 
 ubyte typeObj(const int r, const ref int area){
-    if (r >= redPercent){
+    if (r >= colorPercent){
         if (area > smallObj)
             return 1;
         else
@@ -206,4 +212,17 @@ ubyte typeObj(const int r, const ref int area){
                 return 5;
         }
     }
+}
+
+RCArray!int indicesWithoutHoles(H)(const ref H hierarchy){
+    import mir.appender;
+    auto _ret = scopedBuffer!int;
+    foreach (h; hierarchy)
+    {
+        if(h.border.seq_num - 2 >= 0 && h.border.border_type == 2 )
+            _ret.put(h.border.seq_num - 2);
+        
+    }
+    return rcarray!int(_ret.data);
+
 }

@@ -1,70 +1,98 @@
+/++ Authors: Adrian Rosebrock
+    Ported by Ferhat Kurtulmuş
+    based on: https://pyimagesearch.com/2018/07/23/simple-object-tracking-with-opencv/
++/
+
 module centroidtracker;
 
 import std.math : sqrt;
 import std.algorithm.sorting : sort;
 import std.typecons : Tuple, tuple;
 import std.container.array : Array;
-import std.container.dlist, std.range : walkLength;
-import std.array : Appender;
+import std.range : walkLength;
+import std.array : staticArray;
 import std.algorithm.setops : setDifference;
 
-alias CenterCoord = Tuple!(int, int);
+import dcv.core.utils : dlist;
+
+import mir.appender : scopedBuffer;
+import dplug.core.map;
+
+alias CenterCoord = Tuple!(int, "x", int, "y");
 alias Box = int[4];
+alias Object = Tuple!(int, "id", CenterCoord, "centroid", Box, "box");
 
 struct CentroidTracker {
     @disable this();
+
+@nogc nothrow:
+
 public:
     this(int maxDisappeared){
         this.nextObjectID = 0;
         this.maxDisappeared = maxDisappeared;
+
+        pathKeeper = makeMap!(int, Array!(CenterCoord));
+        disappeared = makeMap!(int, int);
     }
 
-    void register_Object(int cX, int cY, Box b){
+    ~this(){
+        foreach(v; pathKeeper.byValue)
+            v.clear();
+        pathKeeper.clearContents();
+        disappeared.clearContents();
+        objects.clear();
+    }
+    void registerObject(int cX, int cY, Box b){
         int object_ID = this.nextObjectID;
-        this.objects ~= tuple(object_ID, tuple(cX, cY), b);
+        this.objects.insertBack(Object(object_ID, CenterCoord(cX, cY), b));
         this.disappeared[object_ID] = 0;
         this.nextObjectID += 1;
     }
 
-    void update(ref Array!Box boxes){
-        if (!boxes.length) {
-            
-            auto ks = Appender!(int[])();
-            
-            foreach (k, v; this.disappeared) {
-                this.disappeared[k]++;
-                if (v > this.maxDisappeared){
+    typeof(objects).Range update(ref Array!Box boxes){
+        if (boxes.empty) {
+            auto ks = scopedBuffer!int;
+            foreach (ref k_v; disappeared.byKeyValue) {
+                auto k = k_v.key;
+                const v = k_v.value;
+                disappeared[k] += 1;
+                if (v > maxDisappeared){
                     for (auto rn = objects[]; !rn.empty;)
                         if (rn.front[0] == k)
                             objects.popFirstOf(rn);
                         else
                             rn.popFront();
-                    path_keeper[k].clear;
-                    path_keeper.remove(k);
+                    pathKeeper[k].clear;
+                    pathKeeper.remove(k);
                     ks.put(k);
                 }
             }
 
-            foreach (k; ks)
-                this.disappeared.remove(k);
-            
-            return;// this.objects;
+            if(ks.data.length){
+                foreach (k; ks.data)
+                    disappeared.remove(k);
+            }
+             
+            return objects[];
         }
 
+        alias CenterBoxPtr = Tuple!(CenterCoord, "center", Box*, "boxptr");
         // initialize an array of input centroids for the current frame
-        Array!(Tuple!(CenterCoord, Box*)) inputCentroids; inputCentroids.length = boxes.length;
+        Array!(CenterBoxPtr) inputCentroids; inputCentroids.length = boxes.length;
         scope(exit) inputCentroids.clear();
-
-        foreach (i, ref b ; boxes.data) {
+        
+        for (auto bi = 0; bi < boxes.length; bi++) {
+            immutable b = boxes[bi];
             int cX = cast(int)((b[0] + b[2]) / 2.0);
             int cY = cast(int)((b[1] + b[3]) / 2.0);
-            inputCentroids[i] = tuple(tuple(cX, cY), &b);
+            inputCentroids[bi] = CenterBoxPtr(CenterCoord(cX, cY), &boxes.data.ptr[bi]);
         }
 
         //if we are currently not tracking any objects take the input centroids and register each of them
         if (this.objects[].empty) {
-            foreach (ref coord_boxptr; inputCentroids) {
-                this.register_Object(coord_boxptr[0][0], coord_boxptr[0][1], *coord_boxptr[1]);
+            foreach (ref cb; inputCentroids) {
+                this.registerObject(cb.center.x, cb.center.y, *cb.boxptr);
             }
         }
 
@@ -80,8 +108,8 @@ public:
             } 
             size_t oi;
             foreach (ref ob; objects[]){
-                objectIDs[oi] = ob[0];
-                objectCentroids[oi] = ob[1];
+                objectIDs[oi] = ob.id;
+                objectCentroids[oi] = ob.centroid;
                 oi++;
             }
 
@@ -97,8 +125,8 @@ public:
             foreach (size_t i; 0..objectCentroids.length) {
                 Array!float temp_D; temp_D.length = inputCentroids.length;
                 foreach (size_t j; 0..inputCentroids.length) {
-                    const dist = calcDistance(objectCentroids[i][0], objectCentroids[i][1], inputCentroids[j][0][0],
-                                            inputCentroids[j][0][1]);
+                    const dist = calcDistance(objectCentroids[i].x, objectCentroids[i].y, inputCentroids[j].center.x,
+                                            inputCentroids[j].center.y);
 
                     temp_D[j] = cast(float)dist;
                 }
@@ -145,8 +173,8 @@ public:
 
             temp_rows.clear;
 
-            bool[size_t] usedRows;
-            bool[size_t] usedCols;
+            Set!size_t usedRows;
+            Set!size_t usedCols;
 
             //loop over the combination of the (rows, columns) index tuples
             for (size_t i = 0; i < rows.length; i++) {
@@ -157,16 +185,16 @@ public:
                 int objectID = objectIDs[rows[i]];
 
                 foreach (ref id_coord_box ; objects[]){
-                    if (id_coord_box[0] == objectID) {
-                        id_coord_box[1][0] = inputCentroids[cols[i]][0][0];
-                        id_coord_box[1][1] = inputCentroids[cols[i]][0][1];
-                        id_coord_box[2] = *inputCentroids[cols[i]][1]; // update rectangle for new position
+                    if (id_coord_box.id == objectID) {
+                        id_coord_box.centroid.x = inputCentroids[cols[i]].center.x;
+                        id_coord_box.centroid.y = inputCentroids[cols[i]].center.y;
+                        id_coord_box.box = *inputCentroids[cols[i]].boxptr; // update rectangle for new position
                     }
                 }
                 this.disappeared[objectID] = 0;
 
-                usedRows[rows[i]] = true;
-                usedCols[cols[i]] = true;
+                usedRows.insert(rows[i]);
+                usedCols.insert(cols[i]);
             }
 
             // compute indexes we have NOT examined yet
@@ -175,9 +203,8 @@ public:
             auto objRows = iota(0, cast(int)objectCentroids.length);
             auto inpCols = iota(0, cast(int)inputCentroids.length);
 
-            import std.array;
-            Array!int unusedRows = Array!int(setDifference(objRows, usedRows.byKey.array.sort));
-            Array!int unusedCols = Array!int(setDifference(inpCols, usedCols.byKey.array.sort));
+            Array!int unusedRows = Array!int(setDifference(objRows, usedRows[]));
+            Array!int unusedCols = Array!int(setDifference(inpCols, usedCols[]));
             scope(exit){
                 unusedRows.clear;
                 unusedCols.clear;
@@ -193,74 +220,63 @@ public:
                     if (this.disappeared[objectID] > this.maxDisappeared) {
 
                         for (auto rn = objects[]; !rn.empty;)
-                            if (rn.front[0] == objectID)
+                            if (rn.front.id == objectID)
                                 objects.popFirstOf(rn);
                             else
                                 rn.popFront();
 
-                        path_keeper[objectID].clear;
-                        path_keeper.remove(objectID);
+                        pathKeeper[objectID].clear;
+                        pathKeeper.remove(objectID);
                         disappeared.remove(objectID);
                     }
                 }
             } else {
                 foreach (col; unusedCols) {
-                    this.register_Object(inputCentroids[col][0][0], inputCentroids[col][0][1], *inputCentroids[col][1]);
+                    this.registerObject(inputCentroids[col].center.x, inputCentroids[col].center.y, 
+                        *inputCentroids[col].boxptr);
                 }
             }
         }
         //loading path tracking points
         if (!objects[].empty) {
-            foreach (ref id_coord_box ; objects[]){
-                auto id = id_coord_box[0];
-                auto coord = id_coord_box[1];
-                
-                if(id in path_keeper)
-                {
-                    if (path_keeper[id].length > 30) {
-                        path_keeper[id].clear;
-                    }
+            foreach (ob; objects[]){                
+                if(auto ptr = ob.id in pathKeeper){
+                    if ((*ptr).length > 30)
+                        (*ptr).clear;
 
-                    path_keeper[id] ~= tuple(coord[0], coord[1]);
+                    (*ptr) ~= ob.centroid;
                 }else
-                    path_keeper[id] = Array!(CenterCoord)([tuple(coord[0], coord[1])]);
-                
+                    pathKeeper[ob.id] = Array!(CenterCoord)([ob.centroid].staticArray);
             }
         }
-    }
 
-    ref DList!(Tuple!(int, CenterCoord, Box)) getObjects() return {
-        return objects;
+        return objects[];
     }
-
-    ref Array!(CenterCoord)[int] getPathKeeper() return {
-        return path_keeper;
-    }
+    
+    Map!(int, Array!(CenterCoord)) pathKeeper;
     
 private:
     // ID, centroids, Box
-    private DList!(Tuple!(int, CenterCoord, Box)) objects;
-
-    //make buffer for path tracking
-    Array!(CenterCoord)[int] path_keeper;
+    private dlist!(Object) objects;
+    
+    Map!(int, int) disappeared;
 
     int maxDisappeared;
-
     int nextObjectID;
+    // <ID, count>
+    
 
     static double calcDistance(double x1, double y1, double x2, double y2){
-        double x = x1 - x2;
-        double y = y1 - y2;
+        const double x = x1 - x2;
+        const double y = y1 - y2;
         double dist = sqrt((x * x) + (y * y));       //calculating Euclidean distance
 
         return dist;
     }
-
-    // <ID, count>
-    int[int] disappeared;
 }
 
-private size_t findMin(A)(const A v, size_t pos = 0) {
+private size_t findMin(A)(const A v, size_t pos = 0) @nogc nothrow
+{
     if (v.length <= pos) return (v.length);
     size_t min = pos;
     for (size_t i = pos + 1; i < v.length; i++) {

@@ -244,9 +244,11 @@ public:
     }
     
     ~this(){
-        cl_int err = clReleaseMemObject(buffer_) ;
-        handleError(err, "in releasing buffer");
-        buffer_ = null;
+        if(buffer_){
+            cl_int err = clReleaseMemObject(buffer_) ;
+            handleError(err, "in releasing buffer");
+            buffer_ = null;
+        }
     }
 
 @nogc nothrow:

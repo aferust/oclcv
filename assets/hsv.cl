@@ -20,14 +20,14 @@ __kernel void rgb2hsv(
     float cmin = fmin(r, fmin(g, b));
     float cdelta = cmax - cmin;
 
-    uchar h = (uchar)((cdelta == 0) ? 0 : (cmax == r) ? 60.0f * ((g - b) / cdelta) : (cmax == g)
+    float _h = (float)((cdelta == 0) ? 0 : (cmax == r) ? 60.0f * ((g - b) / cdelta) : (cmax == g)
             ? 60.0f * ((b - r) / cdelta + 2) : 60.0f * ((r - g) / cdelta + 4));
 
-    if (h < 0)
-        h += 360;
+    if (_h < 0)
+        _h += 360.0f;
     
-    h /= 2.0f; // map Hue between 0-180
-
+    _h /= 2.0f; // map Hue between 0-180
+    uchar h = (uchar)_h;
     uchar s = (uchar)(100.0f * (cmax == 0 ? 0 : cdelta / cmax));
     uchar v = (uchar)(100.0f * cmax);
 

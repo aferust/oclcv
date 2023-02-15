@@ -5,17 +5,17 @@ import dcv.core;
 import dcv.imgproc;
 import oclcv;
 
-immutable int Hmin1 = 40, Smin1 = 0, Vmin1 = 0;
-immutable int Hmax1 = 85, Smax1 = 255, Vmax1 = 255;
+immutable int Hmin1 = 52, Smin1 = 50, Vmin1 = 0;
+immutable int Hmax1 = 104, Smax1 = 255, Vmax1 = 125;
 
-enum a1 = 3; // kernel size and interations of Morphology Transform
-enum i1 = 1;
-enum a2 = 3; // a1,i1 for OPEN, a2,i2 for CLOSE
-enum i2 = 1;
+enum a1 = 5; // kernel size and interations of Morphology Transform
+enum i1 = 2;
+enum a2 = 5; // a1,i1 for OPEN, a2,i2 for CLOSE
+enum i2 = 2;
 
 
-class Preprocessor {
-
+struct Preprocessor {
+    @disable this();
 private:
     CLContext clctx;
     CLBuffer d_rgb;

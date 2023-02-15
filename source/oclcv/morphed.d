@@ -19,6 +19,7 @@ public:
 
     ~this(){
         destroy(prog_);
+        destroy(d_tmp);
     }
 
     private bool initialize(CLContext ctx){
@@ -76,7 +77,7 @@ public:
             GridDim(cast(int)ceil(cast(float)width_ / tile_w), cast(int)ceil(cast(float)height_ / tile_h)),
                         BlockDim(tile_w, tile_h + (2 * kernelSize_)));
         context_.finish(0);
-
+        
         return d_output;
     }
 
