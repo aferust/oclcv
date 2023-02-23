@@ -12,5 +12,11 @@
         "mir-algorithm": ">=3.15.3",
         "dcv:core": "~master",
 		"dcv:plot": "~master"
-	}
+	},
+	"subConfigurations": {
+		"dcv:plot": "use-glfw-d"
+	},
+	"stringImportPaths": [
+		"fonts"
+	]
 }

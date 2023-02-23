@@ -10,9 +10,8 @@
         "oclcv": {"path": "../../"},
 		"bindbc-opencl": "~>0.1.0",
         "mir-algorithm": ">=3.15.3",
-        "dcv:core": "*",
-        "dcv:imageio": "*",
-		"dcv:plot": "*"
-
+        "dcv:core": "~master",
+        "dcv:imageio": "~master",
+		"dcv:plot": "~master"
 	}
 }

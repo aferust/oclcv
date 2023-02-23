@@ -10,7 +10,6 @@ import dcv.measure;
 import dcv.tracking.centroidtracker;
 
 import mir.ndslice;
-import oclcv;
 
 
 import preprocessor;
@@ -39,6 +38,8 @@ void main()
     auto centroidTracker = CentroidTracker(20);
     auto prep = Preprocessor(H, W);
 
+    auto font = TtfFont(cast(ubyte[])import("Nunito-Regular.ttf"));
+
     // for video file as input
     /*auto pipes = pipeProcess(["ffmpeg", "-i", "file_example_MP4_640_3MG.mp4", "-f", "image2pipe",
      "-vcodec", "rawvideo", "-pix_fmt", "rgb24", "-"],
@@ -55,9 +56,7 @@ void main()
     
     
     auto figDetection = imshow(frame, "Detection");
-    // auto figThr1 = imshow(thr1, "thr1"); // to debug preprocessing
-
-    double fps = 30.0;
+    //auto figThr1 = imshow(thr1, "thr1"); // to debug preprocessing
     double waitFrame = 1.0;
     StopWatch s;
     s.start;
@@ -78,7 +77,7 @@ void main()
         immutable yLen = H;
 
         prep.binarize(frame);
-        // figThr1.draw(prep.thresh1, ImageFormat.IF_MONO);
+        //figThr1.draw(prep.thresh1, ImageFormat.IF_MONO);
 
         Array!Box boxes;
         scope(exit) boxes.clear;
@@ -114,7 +113,7 @@ void main()
                 const wj = cast(int)rect.width;
                 const hj = cast(int)rect.height;
                 
-                auto thresh_i = prep.thresh1[yj..yj+hj, xj..xj+wj];
+                auto thresh_i = prep.thresh1[yj..yj+hj-1, xj..xj+wj-1];
                 
                 auto ret_i = findContours(thresh_i);
                 auto contours_i = ret_i[0];
@@ -152,14 +151,9 @@ void main()
                 ];
                 
                 figDetection.drawRectangle(rect, plotRed, 2.0f);
-                /*string ID = std::to_string(get<0>(obj));
-                cv::putText(cameraFrame, ID, Point(get<1>(obj).first - 10, get<1>(obj).second - 10),
-                            FONT_HERSHEY_COMPLEX, 0.5, Scalar(0, 255, 0), 2);*/
-                
-                
-                /*rectangle(cameraFrame, Point(get<2>(obj)[0], get<2>(obj)[1])
-                                     , Point(get<2>(obj)[2], get<2>(obj)[3]),
-                                     Scalar(0, 255, 0), 2);*/
+
+                figDetection.drawText(font, obj.id.to!string, PlotPoint(cast(float)box[1], cast(float)box[0]),
+                    0.0f, 45, plotBlue);
             }
             
             import core.stdc.math : sqrtf;
@@ -181,17 +175,14 @@ void main()
         
         const wait = max(1, cast(int)waitFrame - cast(int)s.peek.total!"msecs");
         
-
-        if (waitKey(wait) == KEY_ESCAPE)
-            break;
-
-        if (!figDetection.visible/* && !figThr1.visible*/)
+        if (waitKey(wait) == KEY_ESCAPE/* || !figDetection.visible*/)
             break;
     }
     
     
 }
 
+@nogc nothrow:
 ubyte typeObj(const int r, const ref int area){
     if (r >= colorPercent){
         if (area > smallObj)

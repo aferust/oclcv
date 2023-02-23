@@ -14,3 +14,4 @@ oclcv-test-*
 *.o
 *.obj
 *.lst
+*.pdb
