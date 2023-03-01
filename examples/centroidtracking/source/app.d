@@ -175,7 +175,7 @@ void main()
         
         const wait = max(1, cast(int)waitFrame - cast(int)s.peek.total!"msecs");
         
-        if (waitKey(wait) == KEY_ESCAPE/* || !figDetection.visible*/)
+        if (waitKey(wait) == KEY_ESCAPE || !figDetection.visible)
             break;
     }
     
