@@ -10,7 +10,7 @@
     "description": "A collection of OpenCL kernels for image processing in Dlang",
     "license": "BSL 1.0",
     "name": "oclcv",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "targetType": "library",
     "sourceFiles": ["source/oclcv/package.d"],
     "stringImportPaths": [
