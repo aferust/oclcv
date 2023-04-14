@@ -86,7 +86,7 @@ public:
         cl_command_queues_.length = num_streams;
         for(int i=0; i < num_streams; i++){
             cl_command_queues_[i] = clCreateCommandQueue(cl_context_, cl_device_id_,
-                                                        CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE, &err);
+                                                        CL_QUEUE_PROFILING_ENABLE, &err);
             handleError(err, "creating ClCommandQueue");
         }
 
@@ -355,6 +355,13 @@ public:
         cl_int err = clEnqueueNDRangeKernel(context_.getCommandQueue(queue_id),
                                         kernel_, 3, global_w_offset.ptr, global_w_size.ptr,
                                         local_w_size.ptr, 0, null, null);
+
+        handleError(err, "enqueuing kernel");
+    }
+
+    void launch(int queue_id, size_t* gwo, size_t* gws, size_t* lws){
+        cl_int err = clEnqueueNDRangeKernel(context_.getCommandQueue(queue_id),
+                                        kernel_, 3, gwo, gws, lws, 0, null, null);
         handleError(err, "enqueuing kernel");
     }
 
@@ -644,5 +651,6 @@ enum CTKernel {
     KSGM = import("sgm.cl"),
     KINRANGE3 = import("inrange3.cl"),
     KCOUNTNONZERO = import("countnonzero.cl"),
-    KMORPHED = import("morphed.cl")
+    KMORPHED = import("morphed.cl"),
+    KRESIZE = import("resize.cl")
 }

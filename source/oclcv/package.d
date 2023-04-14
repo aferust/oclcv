@@ -6,4 +6,5 @@ public {
     import oclcv.sgm;
     import oclcv.countnonzero;
     import oclcv.morphed;
+    import oclcv.resize;
 }

@@ -15,7 +15,10 @@ void main()
     CLContext context = new CLContext;
     context.clInfo().writeln;
 
-    auto img = imread("data/test.png").sliced.rgb2gray;
+    auto imgI = imread("data/test.png");
+    scope(exit) destroyFree(imgI);
+
+    auto img = imgI.sliced.rgb2gray;
 
 
     size_t height = img.shape[0];

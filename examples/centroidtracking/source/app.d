@@ -10,7 +10,7 @@ import dcv.measure;
 import dcv.tracking.centroidtracker;
 
 import mir.ndslice;
-
+import mir.rc;
 
 import preprocessor;
 
@@ -179,7 +179,7 @@ void main()
             break;
     }
     
-    
+    destroyFigures();
 }
 
 @nogc nothrow:

@@ -71,6 +71,6 @@ void main()
         if (!figGray.visible)
             break;
     }
-    
+    destroyFigures();
     
 }

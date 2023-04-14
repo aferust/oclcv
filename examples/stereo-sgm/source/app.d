@@ -15,8 +15,16 @@ void main()
     CLContext context = new CLContext;
     context.clInfo().writeln;
 
-    auto leftrgb = imread("data/im0.png").sliced;
-    auto rightrgb = imread("data/im1.png").sliced;
+    auto _leftrgb = imread("data/im0.png");
+    auto _rightrgb = imread("data/im1.png");
+
+    scope(exit){
+        destroyFree(_leftrgb);
+        destroyFree(_rightrgb);
+    }
+
+    auto leftrgb = _leftrgb.sliced;
+    auto rightrgb = _rightrgb.sliced;
 
     size_t height = leftrgb.shape[0];
     size_t width = leftrgb.shape[1];
@@ -47,4 +55,6 @@ void main()
     imshow(disp, "disp");
 
     waitKey();
+
+    destroyFigures();
 }

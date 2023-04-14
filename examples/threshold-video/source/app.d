@@ -76,5 +76,5 @@ void main()
             break;
     }
     
-    
+    destroyFigures();
 }
