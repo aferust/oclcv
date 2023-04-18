@@ -7,4 +7,5 @@ public {
     import oclcv.countnonzero;
     import oclcv.morphed;
     import oclcv.resize;
+    import oclcv.convolution;
 }

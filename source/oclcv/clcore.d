@@ -652,5 +652,6 @@ enum CTKernel {
     KINRANGE3 = import("inrange3.cl"),
     KCOUNTNONZERO = import("countnonzero.cl"),
     KMORPHED = import("morphed.cl"),
-    KRESIZE = import("resize.cl")
+    KRESIZE = import("resize.cl"),
+    KCONV = import("convolution.cl")
 }
