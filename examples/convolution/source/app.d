@@ -4,6 +4,7 @@ import std.stdio;
 import dcv.core, dcv.imgproc;
 import dcv.imageio;
 import dcv.plot.figure;
+import std.datetime.stopwatch : StopWatch;
 
 import mir.ndslice, mir.rc;
 
@@ -44,6 +45,10 @@ void main()
     d_filtered.download(imFiltered.ptr[0..imFiltered.elementCount]);
 
     // filter color image
+    // not a best implementation but this is still ~10 times faster then conv of DCV;
+    StopWatch s;
+    s.start;
+
     auto imRGB = imRGBI.sliced.as!float.rcslice;
     auto d_inputR = new CLBuffer(context, BufferMeta(FLOAT, srcH, srcW, 1));
     auto d_inputG = new CLBuffer(context, BufferMeta(FLOAT, srcH, srcW, 1));
@@ -81,6 +86,9 @@ void main()
     merged[0..$, 0..$, 1] = imFilteredG;
     merged[0..$, 0..$, 2] = imFilteredB;
     
+    s.stop();
+    writeln(s.peek.total!"msecs", " msecs");
+
     imshow(imRGBI, "original");
     imshow(imGrayFloat, "imGrayFloat");
     imshow(imFiltered, "imFiltered");
