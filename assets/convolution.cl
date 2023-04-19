@@ -1,6 +1,5 @@
-
-// compile time constants for speed:
-// filter_depth, filter_width, filter_height
+// z is probably relevant only for convolutions related to deep learning not image processing
+// since in IP you usually want to split channels and apply filters separately to each channel
 
 __kernel void convolution(__global const float *input,
                            __global const float *filter,
