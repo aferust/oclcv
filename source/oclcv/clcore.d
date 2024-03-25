@@ -7,8 +7,10 @@ debug import std.stdio;
 
 import core.stdc.stdio : printf, fread, fopen, fclose, FILE;
 import core.stdc.stdlib : EXIT_FAILURE, exit, malloc, free;
-
+import bc.string;
+import bcaa;
 import bindbc.opencl;
+import dplug.core;
 
 struct BlockDim {
     int x = 1, y = 1, z = 1;
@@ -39,6 +41,8 @@ enum : SyncMode
 
 final class CLContext {
 public:
+    @nogc nothrow:
+
     this(int platform_id = 0, int device_id = 0, int num_streams = 1){
         
         loadDLib();
@@ -46,13 +50,14 @@ public:
         cl_platform_id p_id;
         cl_int err = 0;
         cl_uint num_platforms, num_divices;
-        cl_platform_id[] p_ids;
-        cl_device_id[] d_ids;
+        cl_platform_id* p_ids;
+        cl_device_id* d_ids;
 
         clGetPlatformIDs(0, null, &num_platforms);
         if(num_platforms > 0){
-            p_ids.length = num_platforms;
-            clGetPlatformIDs(num_platforms, p_ids.ptr, null);
+            p_ids = cast(cl_platform_id*)malloc(cl_platform_id.sizeof * num_platforms);
+            scope(exit) free(p_ids);
+            clGetPlatformIDs(num_platforms, p_ids, null);
             if(platform_id < 0 || platform_id >= int(num_platforms)) {
                 printf("Incorrect platform id %d!\n", platform_id);
                 exit(EXIT_FAILURE);
@@ -65,8 +70,9 @@ public:
 
         clGetDeviceIDs(p_id, CL_DEVICE_TYPE_ALL, 0, null, &num_divices);
         if(num_divices > 0){
-            d_ids.length = num_divices;
-            clGetDeviceIDs(p_id, CL_DEVICE_TYPE_ALL, num_divices,d_ids.ptr,null);
+            d_ids = cast(cl_device_id*)malloc(cl_device_id.sizeof * num_divices);
+            scope(exit) free(d_ids);
+            clGetDeviceIDs(p_id, CL_DEVICE_TYPE_ALL, num_divices, d_ids, null);
             if(device_id < 0 || device_id >= int(num_divices)){
                 printf("Incorrect device id %d!\n",device_id);
                 exit(EXIT_FAILURE);
@@ -80,34 +86,34 @@ public:
 
         cl_context_properties[3] prop = [CL_CONTEXT_PLATFORM, cast(cl_context_properties)p_id, 0];
         cl_context_ = clCreateContext(prop.ptr, 1, &cl_device_id_, null, null, &err);
-        handleError(err, "creating context");
+        handleError(err, RCStringZ.from("creating context"));
         printf("OpenCL context created! \n");
 
-        cl_command_queues_.length = num_streams;
+        cl_command_queues_ = (cast(cl_command_queue*)malloc(cl_command_queue.sizeof * num_streams))[0..num_streams];
         for(int i=0; i < num_streams; i++){
             cl_command_queues_[i] = clCreateCommandQueue(cl_context_, cl_device_id_,
                                                         CL_QUEUE_PROFILING_ENABLE, &err);
-            handleError(err, "creating ClCommandQueue");
+            handleError(err, RCStringZ.from("creating ClCommandQueue"));
         }
 
-        OutBuffer oss = new OutBuffer();
-        oss.writefln("Selected platform vendor: %s %s", getPlatformInfo(p_id,CL_PLATFORM_VENDOR),
+        RCStringZ oss;
+        oss ~= nogcFormat!"Selected platform vendor: %s %s"(getPlatformInfo(p_id,CL_PLATFORM_VENDOR),
                                         getPlatformInfo(p_id,CL_PLATFORM_VERSION));
-        oss.writefln("Selected device name: %s", getDevInfo(cl_device_id_, CL_DEVICE_NAME));
-        oss.writefln("Selected device OpenCL device version: %s",
+        oss ~= nogcFormat!"Selected device name: %s"(getDevInfo(cl_device_id_, CL_DEVICE_NAME));
+        oss ~= nogcFormat!"Selected device OpenCL device version: %s"(
                                     getDevInfo(cl_device_id_, CL_DEVICE_VERSION));
-        oss.writefln("Selected device OpenCL C device version: %s",
+        oss ~= nogcFormat!"Selected device OpenCL C device version: %s"(
                                     getDevInfo(cl_device_id_, CL_DEVICE_OPENCL_C_VERSION));
-        cl_info_ = oss.toString();
+        cl_info_ = oss;
     }
 
     ~this(){
         foreach(ref cq; cl_command_queues_)
             clReleaseCommandQueue(cq);
+        free(cl_command_queues_.ptr);
         clReleaseContext(cl_context_);
     }
 
-@nogc nothrow {
     cl_context getCLContext() {return cl_context_;}
     cl_device_id getDevId() {return cl_device_id_;}
     
@@ -117,30 +123,28 @@ public:
     }
     
     void finish(int command_queue_id) {
-        cl_int err = clFinish(cl_command_queues_[command_queue_id]);
-        handleError(err, "finishing command queue");
+        cl_int err = clFinish(cl_command_queues_[command_queue_id]);        
+        handleError(err, RCStringZ.from("finishing command queue"));
     }
 
-    string clInfo() {return cl_info_;}
-}
+    RCStringZ clInfo() {return cl_info_;}
 
 private:
-    string getPlatformInfo(cl_platform_id platform_id, int info_name){
+    RCStringZ getPlatformInfo(cl_platform_id platform_id, int info_name){
         size_t info_size = 0;
         clGetPlatformInfo(platform_id, info_name, 0, null, &info_size);
-        char[] str;
-        str.length = info_size;
-        clGetPlatformInfo(platform_id, info_name, info_size, &str[0], null);
-        return str.to!string;
+        RCStringZ str; str.reserve(info_size);
+        
+        clGetPlatformInfo(platform_id, info_name, info_size, str.data.ptr, null);
+        return str;
     }
 
-    string getDevInfo(cl_device_id dev_id, int info_name){
+    RCStringZ getDevInfo(cl_device_id dev_id, int info_name){
         size_t info_size = 0;
         clGetDeviceInfo(dev_id, info_name, 0, null, &info_size);
-        char[] str;
-        str.length = info_size;
-        clGetDeviceInfo(dev_id, info_name, info_size, &str[0], null);
-        return str.to!string;
+        RCStringZ str; str.reserve(info_size);
+        clGetDeviceInfo(dev_id, info_name, info_size, str.data.ptr, null);
+        return str;
     }
 
     void loadDLib(){
@@ -156,7 +160,7 @@ private:
 
     static CLSupport support_ = CLSupport.noLibrary;
     cl_command_queue[] cl_command_queues_;
-    string cl_info_;
+    RCStringZ cl_info_;
     cl_context cl_context_;
     cl_device_id cl_device_id_;
 }
@@ -174,8 +178,9 @@ enum : DataType {
     LONG = 5,
     ULONG = 5
 }
+@nogc nothrow:
 
-size_t unitSize(int dtype) @nogc nothrow {
+size_t unitSize(int dtype) {
     if (dtype == -1){
         const string f = __FILE__;
         const int ln = __LINE__;
@@ -221,6 +226,8 @@ struct BufferMeta {
 
 final class CLBuffer {
 public:
+    @nogc nothrow:
+
     this(CLContext ctx, BufferMeta buffer_meta, MemFlag flag = MEM_FLAG_READ_WRITE,
              void[] host_data = null)
     {
@@ -237,7 +244,7 @@ public:
         cl_int err;
         buffer_ = clCreateBuffer(context_.getCLContext(), getCLMemFlag(flag),
                                                         size_, null, &err);
-        handleError(err, "creating buffer");
+        handleError(err, RCStringZ.from("creating buffer"));
         if(host_data){
             upload(host_data, SYNC_MODE_BLOCKING, 0);
         }
@@ -246,7 +253,7 @@ public:
     ~this(){
         if(buffer_){
             cl_int err = clReleaseMemObject(buffer_) ;
-            handleError(err, "in releasing buffer");
+            handleError(err, RCStringZ.from("in releasing buffer"));
             buffer_ = null;
         }
     }
@@ -307,7 +314,7 @@ private:
         cl_int err = clEnqueueWriteBuffer(context_.getCommandQueue(command_queue),
                                         buffer_, b_Block, offset, size, data, 0,
                                                                 null, null);
-        handleError(err, "enqueuing writing buffer");
+        handleError(err, "enqueuing writing buffer".RCStringZ);
     }
 
     void download(void* data, size_t offset, size_t size, SyncMode block_queue,
@@ -316,7 +323,7 @@ private:
         cl_int err = clEnqueueReadBuffer(context_.getCommandQueue(command_queue),
                                         buffer_, b_Block, offset, size, data, 0,
                                                                 null, null);
-        handleError(err, "enqueuing reading buffer");
+        handleError(err, "enqueuing reading buffer".RCStringZ);
     }
 
     CLContext context_;
@@ -330,19 +337,19 @@ private:
 
 final class CLKernel {
 public:
+    @nogc nothrow:
+
     this(CLContext context, cl_program program, string kernel_name){
         cl_int err = CL_SUCCESS;
         context_ = context;
         kernel_name_ = kernel_name;
-        kernel_ = clCreateKernel(program, kernel_name_.toStringz, &err);
-        handleError(err, "creating kernel: " ~ kernel_name);
+        kernel_ = clCreateKernel(program, RCStringZ.from(kernel_name_).data.ptr, &err);
+        handleError(err, RCStringZ.from("creating kernel: ", kernel_name));
     }
     ~this(){
         cl_int err = clReleaseKernel(kernel_);
-        handleError(err, "releasing kernel objects");
+        handleError(err, RCStringZ.from("releasing kernel objects"));
     }
-
-@nogc nothrow:
 
     void launch(int queue_id, GridDim gd, BlockDim bd){
         size_t[3] global_w_offset = [0, 0, 0];
@@ -356,13 +363,13 @@ public:
                                         kernel_, 3, global_w_offset.ptr, global_w_size.ptr,
                                         local_w_size.ptr, 0, null, null);
 
-        handleError(err, "enqueuing kernel");
+        handleError(err, RCStringZ.from("enqueuing kernel"));
     }
 
     void launch(int queue_id, size_t* gwo, size_t* gws, size_t* lws){
         cl_int err = clEnqueueNDRangeKernel(context_.getCommandQueue(queue_id),
                                         kernel_, 3, gwo, gws, lws, 0, null, null);
-        handleError(err, "enqueuing kernel");
+        handleError(err, RCStringZ.from("enqueuing kernel"));
     }
 
     void setArgs(Args...)(Args args){
@@ -377,7 +384,7 @@ public:
                 err = clSetKernelArg(kernel_, cl_uint(i), typeof(arg).sizeof, cast(void*)&arg);
             }
             
-            debug handleError(err, "setting kernel arguments of " ~ kernel_name_);
+            debug handleError(err, RCStringZ.from("setting kernel arguments of ",  kernel_name_));
         }
     }
 
@@ -389,8 +396,9 @@ private:
 
 final class CLProgram{
 public:
+@nogc nothrow:
     this(string source_path = "", CLContext context=null
-                          , string compilation_options="-I \"./\""){
+                          , const(char)[] compilation_options="-I \"./\""){
         context_ = context;
 
         enum MAX_SOURCE_SIZE = 0x100000;
@@ -398,8 +406,8 @@ public:
         FILE *fp;
         char *source_str;
         size_t source_size;
-    
-        fp = fopen(source_path.toStringz, "r");
+        
+        fp = fopen(RCStringZ.from(source_path).data.ptr, "r");
         if (!fp) {
             printf("Failed to load kernel.\n");
             exit(1);
@@ -414,42 +422,42 @@ public:
     }
 
     this(CTKernel ct_kernel, CLContext context=null
-                          , string compilation_options="-I \"./\""){
+                          , const(char)[] compilation_options="-I \"./\""){
         context_ = context;
 
-        char* source_str = ct_kernel.dup.ptr;
-
-        createProgram(source_str, ct_kernel.length, compilation_options);
+        createProgram(ct_kernel.ptr, ct_kernel.length, compilation_options);
         createKernels();
     }
 
     ~this(){
         foreach(ref item; kernels_.byValue()){
-            item.destroy();
+            destroyFree(item);
             item = null;
         }
         if(cl_program_ !is null){
             cl_int err = clReleaseProgram(cl_program_);
-            handleError(err, "releasing program");
+            handleError(err, RCStringZ.from("releasing program"));
         }
+
+        kernels_.free();
     }
-    bool createProgram(const char* source, size_t source_size, string compilation_options = null){
+    bool createProgram(const char* source, size_t source_size, const(char)[] compilation_options = null){
         cl_int err;
-        char[] cop = null;
+        RCStringZ cop;
         if(compilation_options){
             //debug writeln(compilation_options);
-            cop = compilation_options.dup;
+            cop = RCStringZ.from(compilation_options);
         }
         const size_t size_src = source_size;
         
         cl_program_ = clCreateProgramWithSource(context_.getCLContext(), 1,
                                                 cast(const char **)&source, &size_src, &err);
-        handleError(err, "creating program with source data");
+        handleError(err, RCStringZ.from("creating program with source data"));
         cl_device_id dev_id = context_.getDevId();
-        err = clBuildProgram(cl_program_, 1, &dev_id, cop.ptr, null, null);
+        err = clBuildProgram(cl_program_, 1, &dev_id, cop.data.ptr, null, null);
 
-        import std.format, std.conv : to;
-        handleError(err, format("building program with source: %s\nUsing compilation options: %s\n", source.to!string, compilation_options));
+        handleError(err, RCStringZ.from(nogcFormat!"building program with source: %s\nUsing compilation options: %s\n"(
+            source, compilation_options)));
         return true;
     }
 
@@ -460,15 +468,16 @@ public:
         if(num_kernels == 0)
             err = CL_INVALID_BINARY;
         if(err != CL_SUCCESS){
-            char[] build_log;
+            char* build_log;
             size_t log_size = 0;
             clGetProgramBuildInfo(cl_program_, context_.getDevId(),
                                 CL_PROGRAM_BUILD_LOG, 0, null, &log_size);
-            build_log.length = log_size;
+            build_log = cast(char*)malloc(char.sizeof * log_size);
+            scope(exit) free(build_log);
             clGetProgramBuildInfo(cl_program_, context_.getDevId(),
-                                CL_PROGRAM_BUILD_LOG, log_size, build_log.ptr, null);
-            printf("%s \n", build_log.ptr);
-            handleError(err,"creating kernels");
+                                CL_PROGRAM_BUILD_LOG, log_size, build_log, null);
+            printf("%s \n", build_log);
+            handleError(err, RCStringZ.from("creating kernels"));
 
         }
         return true;
@@ -480,7 +489,7 @@ public:
         if (auto kernptr = kernel_name in kernels_)
             kernel = *kernptr;
         else{
-            kernel = new CLKernel(context_, cl_program_, kernel_name);
+            kernel = mallocNew!CLKernel(context_, cl_program_, kernel_name);
             kernels_[kernel_name] = kernel;
         }
 
@@ -497,15 +506,15 @@ public:
 private:
     CLContext context_;
     cl_program cl_program_;
-    CLKernel[string] kernels_;
+    Bcaa!(string, CLKernel) kernels_;
 }
 
 @nogc nothrow:
 
-static void handleError()(cl_int err, auto ref string msg, string f = __FILE__, int l = __LINE__){
+static void handleError()(cl_int err, RCStringZ msg, string f = __FILE__, int l = __LINE__){
     if(err != CL_SUCCESS){
         immutable(string) oerr = errorNumberToString(err);
-        printf("[OpenCL Error] in %s !: %s %s:%d\n", msg.ptr, oerr.ptr, f.ptr, l);
+        printf("[OpenCL Error] in %s !: %s %s:%d\n", msg.data.ptr, oerr.ptr, f.ptr, l);
         exit(EXIT_FAILURE);
     }
 }

@@ -1,9 +1,12 @@
 module oclcv.convolution;
 
 import oclcv.clcore;
+import core.stdc.stdlib, core.stdc.stdio;
+import dplug.core.nogc;
 
 final class Convolution {
 public:
+@nogc nothrow:
     this(int inputHeight, int inputWidth, int inputDepth, int filterHeight, int filterWidth, CLContext ctx){
         this.inputHeight = inputHeight;
         this.inputWidth = inputWidth;
@@ -12,12 +15,13 @@ public:
         this.filterWidth = filterWidth;
         
         if(!initialize(ctx)){
-            throw new Exception("Problem initializing the kernel");
+            printf("Problem initializing the OpenCL kernel %s", __FILE__.ptr);
+            exit(-1);
         }
     }
 
     ~this(){
-        destroy(prog_);
+        destroyFree(prog_);
     }
 
     bool initialize(CLContext ctx){
@@ -26,10 +30,8 @@ public:
             return false;
         context_ = ctx;
         
-        prog_ = new CLProgram(CTKernel.KCONV, context_);
+        prog_ = mallocNew!CLProgram(CTKernel.KCONV, context_);
         _kernel = prog_.getKernel("convolution");
-        
-        d_out = new CLBuffer(context_, BufferMeta(FLOAT, inputHeight, inputWidth, inputDepth));
         
         return true;
     }
@@ -38,6 +40,8 @@ public:
         import std.algorithm.searching : canFind;
         debug _assert(d_src.metaData.dataType == FLOAT, "Input type must be ubyte"); 
         debug _assert([1,2,3].canFind(d_src.metaData.numberOfChannels), "Input's channel count must be 1,2, or 3");
+
+        CLBuffer d_out = mallocNew!CLBuffer(context_, BufferMeta(FLOAT, inputHeight, inputWidth, inputDepth));
 
         _kernel.setArgs(d_src, d_filter, d_out, inputWidth, inputHeight, inputDepth, filterWidth, filterHeight);
         
@@ -67,6 +71,4 @@ private:
     CLProgram prog_;
 
     CLKernel _kernel;
-    
-    CLBuffer d_out;
 }

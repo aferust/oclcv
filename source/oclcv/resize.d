@@ -1,21 +1,25 @@
 module oclcv.resize;
 
 import oclcv.clcore;
+import dplug.core.nogc;
 
 final class Resize3(string method) {
     // available methods : resize_linear, resize_bicubic
 public:
+@nogc nothrow:
     this(int srcHeight, int srcWidth, int dstWidth, int dstHeight, CLContext ctx){
         srcHeight_ = srcHeight; srcWidth_= srcWidth;
         dstHeight_ = dstHeight; dstWidth_= dstWidth;
         
         if(!initialize(ctx)){
-            throw new Exception("Problem initializing the kernel");
+            import core.stdc.stdlib, core.stdc.stdio;
+            printf("Problem initializing the OpenCL kernel %s", __FILE__);
+            exit(-1);
         }
     }
 
     ~this(){
-        destroy(prog_);
+        destroyFree(prog_);
     }
 
     bool initialize(CLContext ctx){
@@ -23,10 +27,8 @@ public:
             return false;
         context_ = ctx;
         
-        prog_ = new CLProgram(CTKernel.KRESIZE, context_);
+        prog_ = mallocNew!CLProgram(CTKernel.KRESIZE, context_);
         resize_kernel = prog_.getKernel(method);
-
-        d_out = new CLBuffer(context_, BufferMeta(UBYTE, dstHeight_, dstWidth_, 3));
         
         return true;
     }
@@ -34,6 +36,8 @@ public:
     CLBuffer run(CLBuffer d_src_3){
         debug _assert(d_src_3.metaData.dataType == UBYTE, "Input type must be ubyte"); 
         debug _assert(d_src_3.metaData.numberOfChannels == 3, "Input's channel count must be 3");
+
+        CLBuffer d_out = mallocNew!CLBuffer(context_, BufferMeta(UBYTE, dstHeight_, dstWidth_, 3));
 
         struct _int2 {int x, y;}
         auto srcSize = _int2(srcWidth_, srcHeight_);
@@ -61,6 +65,4 @@ private:
     CLProgram prog_;
 
     CLKernel resize_kernel;
-    
-    CLBuffer d_out;
 }

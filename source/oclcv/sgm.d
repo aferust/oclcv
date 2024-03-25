@@ -4,6 +4,8 @@ import core.stdc.stdio : printf;
 
 import oclcv.clcore;
 
+import dplug.core.nogc;
+
 final class StereoSGMCL{
 public:
     this(int height, int width, int disp_size, CLContext ctx){
@@ -18,7 +20,7 @@ public:
             return false;
         context_ = ctx;
         //initialize kernels
-        sgm_prog_ = new CLProgram(CTKernel.KSGM, context_);
+        sgm_prog_ = mallocNew!CLProgram(CTKernel.KSGM, context_);
         m_census_kernel = sgm_prog_.getKernel("census_kernel");
         m_matching_cost_kernel_128 = sgm_prog_.getKernel("matching_cost_kernel_128");
         m_compute_stereo_horizontal_dir_kernel_0 = sgm_prog_.getKernel("compute_stereo_horizontal_dir_kernel_0");
@@ -35,17 +37,41 @@ public:
         m_copy_u8_to_u16 = sgm_prog_.getKernel("copy_u8_to_u16");
         m_clear_buffer = sgm_prog_.getKernel("clear_buffer");
 
+        return true;
+    }
+
+    @nogc nothrow
+    CLBuffer run(CLBuffer d_src_left, CLBuffer d_src_right){
+        debug _assert(d_src_left.metaData.dataType == UBYTE, "left data type should be ubyte");
+        debug _assert(d_src_right.metaData.dataType == UBYTE, "right data type should be ubyte");
+
+        debug _assert(d_src_left.metaData.numberOfChannels == 1, "Only single channel images are supported");
+        debug _assert(d_src_right.metaData.numberOfChannels == 1, "Only single channel images are supported");
+
+        this.d_src_left = d_src_left;
+        this.d_src_right = d_src_right;
+
         //create buffers
 
-        d_left = new CLBuffer(context_, BufferMeta(ULONG, height_, width_));
-        d_right = new CLBuffer(context_, BufferMeta(ULONG, height_, width_));
-        d_matching_cost = new CLBuffer(context_, BufferMeta(UBYTE, height_, width_, disp_size_));
-        d_scost = new CLBuffer(context_, BufferMeta(USHORT, height_, width_, disp_size_));
-        d_left_disparity = new CLBuffer(context_, BufferMeta(USHORT, height_, width_));
-        d_right_disparity = new CLBuffer(context_, BufferMeta(USHORT, height_, width_));
-        d_tmp_left_disp = new CLBuffer(context_, BufferMeta(USHORT, height_, width_));
-        d_tmp_right_disp = new CLBuffer(context_, BufferMeta(USHORT, height_, width_));
+        auto d_left = mallocNew!CLBuffer(context_, BufferMeta(ULONG, height_, width_));
+        auto d_right = mallocNew!CLBuffer(context_, BufferMeta(ULONG, height_, width_));
+        auto d_matching_cost = mallocNew!CLBuffer(context_, BufferMeta(UBYTE, height_, width_, disp_size_));
+        auto d_scost = mallocNew!CLBuffer(context_, BufferMeta(USHORT, height_, width_, disp_size_));
+        auto d_left_disparity = mallocNew!CLBuffer(context_, BufferMeta(USHORT, height_, width_));
+        auto d_right_disparity = mallocNew!CLBuffer(context_, BufferMeta(USHORT, height_, width_));
+        auto d_tmp_left_disp = mallocNew!CLBuffer(context_, BufferMeta(USHORT, height_, width_));
+        auto d_tmp_right_disp = mallocNew!CLBuffer(context_, BufferMeta(USHORT, height_, width_));
 
+        scope(exit){
+            destroyFree(d_left);
+            destroyFree(d_right);
+            destroyFree(d_matching_cost);
+            destroyFree(d_scost);
+            destroyFree(d_left_disparity);
+            destroyFree(d_right_disparity);
+            destroyFree(d_tmp_right_disp);
+        }
+        
         //setup kernels
         
         m_matching_cost_kernel_128.setArgs(d_left, d_right, d_matching_cost, width_, height_);
@@ -62,20 +88,6 @@ public:
         m_median_3x3.setArgs(d_left_disparity, d_tmp_left_disp, width_, height_);
         m_copy_u8_to_u16.setArgs(d_matching_cost, d_scost);
 
-        return true;
-    }
-
-    @nogc nothrow
-    CLBuffer run(CLBuffer d_src_left, CLBuffer d_src_right){
-        debug _assert(d_src_left.metaData.dataType == UBYTE, "left data type should be ubyte");
-        debug _assert(d_src_right.metaData.dataType == UBYTE, "right data type should be ubyte");
-
-        debug _assert(d_src_left.metaData.numberOfChannels == 1, "Only single channel images are supported");
-        debug _assert(d_src_right.metaData.numberOfChannels == 1, "Only single channel images are supported");
-
-        this.d_src_left = d_src_left;
-        this.d_src_right = d_src_right;
-
         m_census_kernel.setArgs(d_src_left, d_left, width_, height_);
         m_check_consistency_left.setArgs(d_tmp_left_disp, d_tmp_right_disp, d_src_left, width_, height_);
         
@@ -90,15 +102,7 @@ public:
     }
 
     ~this(){
-        destroy(sgm_prog_);
-        
-        destroy(d_left);
-        destroy(d_right);
-        destroy(d_matching_cost);
-        destroy(d_scost);
-        destroy(d_left_disparity);
-        destroy(d_right_disparity);
-        destroy(d_tmp_right_disp);
+        destroyFree(sgm_prog_);
     }
 
 private:

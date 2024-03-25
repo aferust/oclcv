@@ -4,7 +4,10 @@
     ],
     "copyright": "Copyright © 2023, Ferhat Kurtulmuş",
     "dependencies": {
-        "bindbc-opencl": "~>0.1.0"
+        "bindbc-opencl": "~>0.1.0",
+        "bc-string": "~>1.4.0",
+		"dplug:core": "*",
+        "bcaa": "*"
     },
     "versions": ["CL_12"],
     "description": "A collection of OpenCL kernels for image processing in Dlang",

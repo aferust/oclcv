@@ -1,14 +1,18 @@
 module oclcv.countnonzero;
 
 import oclcv.clcore;
+import std.array;
+import dplug.core.nogc;
+import bc.string;
 
 final class CountNonZero {
 public:
+@nogc nothrow:
     this(int height, int width, string comparisonOP, CLContext ctx){
 
         import std.algorithm: canFind;
 
-        if(!["<", ">", "<=", ">=", "==", "!="].canFind(comparisonOP)){
+        if(!["<", ">", "<=", ">=", "==", "!="].staticArray[].canFind(comparisonOP)){
             debug _assert(0, `unsupported OP. Please use one of these OPs: "<", ">", "<=", ">=", "==", "!="`);
         }
 
@@ -17,8 +21,7 @@ public:
     }
 
     ~this(){
-        destroy(d_count);
-        destroy(prog_);
+        destroyFree(prog_);
     }
 
     private bool initialize(CLContext ctx){
@@ -26,10 +29,8 @@ public:
             return false;
         context_ = ctx;
         
-        prog_ = new CLProgram(CTKernel.KCOUNTNONZERO, context_, "-D OP=" ~ _comparisonOP);
+        prog_ = mallocNew!CLProgram(CTKernel.KCOUNTNONZERO, context_, RCStringZ.from("-D OP=", _comparisonOP)[]);
         _kernel = prog_.getKernel("countNonZero");
-
-        d_count = new CLBuffer(context_, BufferMeta(ULONG, 1, 1, 1));
         
         return true;
     }
@@ -39,6 +40,8 @@ public:
         debug _assert(d_src_mono.metaData.dataType == UBYTE, "Input type must be ubyte"); 
         debug _assert(d_src_mono.metaData.numberOfChannels == 1, "Input's channel count must be 1");
 
+        CLBuffer d_count = mallocNew!CLBuffer(context_, BufferMeta(ULONG, 1, 1, 1));
+
         ulong ret;
         d_count.upload((&ret)[0..1]);
         
@@ -47,7 +50,7 @@ public:
         
         compute();
         d_count.download((&ret)[0..1]);
-
+        destroyFree(d_count);
         return ret;
     }
 
@@ -64,6 +67,4 @@ private:
     CLProgram prog_;
 
     CLKernel _kernel;
-    
-    CLBuffer d_count;
 }
