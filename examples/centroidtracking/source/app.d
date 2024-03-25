@@ -33,12 +33,25 @@ enum WS = W.to!string;
 enum HS = H.to!string;
 enum SIZE_STR = WS ~ "x" ~ HS;
 
+ulong frameCount = 0;
+double elapsedTime = 0.0;
+double realTimeFPS = 0.0;
+TtfFont font;
+
 void main()
 {
-    auto centroidTracker = CentroidTracker(20);
+    void newObjCBack(TrackedObject ob){
+        printf("new object %d\n", ob.id);
+    }
+
+    void disObjCBack(TrackedObject ob){
+        printf("disappeared %d\n", ob.id);
+    }
+
+    auto centroidTracker = CentroidTracker(20, &newObjCBack, &disObjCBack);
     auto prep = Preprocessor(H, W);
 
-    auto font = TtfFont(cast(ubyte[])import("Nunito-Regular.ttf"));
+    font = TtfFont(cast(ubyte[])import("Nunito-Regular.ttf"));
 
     // for video file as input
     /*auto pipes = pipeProcess(["ffmpeg", "-i", "file_example_MP4_640_3MG.mp4", "-f", "image2pipe",
@@ -56,7 +69,8 @@ void main()
     
     
     auto figDetection = imshow(frame, "Detection");
-    //auto figThr1 = imshow(thr1, "thr1"); // to debug preprocessing
+    auto figBin = imshow(rcslice!ubyte([H, W], 0), "figBin");
+
     double waitFrame = 1.0;
     StopWatch s;
     s.start;
@@ -65,19 +79,18 @@ void main()
     {
         import std.algorithm.comparison : max;
 
-        s.reset;
         // Read a frame from the input pipe into the buffer
         const ubyte[] dt = pipes.stdout.rawRead(frame.ptr[0..H*W*3]);
         // If we didn't get a frame of video, we're probably at the end
         if (dt.length != H*W*3) break;
 
-        figDetection.draw(frame, ImageFormat.IF_RGB); // redraw the window
+        figDetection.draw(frame); // redraw the window
 
         immutable xLen = W;
         immutable yLen = H;
 
         prep.binarize(frame);
-        //figThr1.draw(prep.thresh1, ImageFormat.IF_MONO);
+        figBin.draw(prep.thresh1);
 
         Array!Box boxes;
         scope(exit) boxes.clear;
@@ -177,6 +190,9 @@ void main()
         
         if (waitKey(wait) == KEY_ESCAPE || !figDetection.visible)
             break;
+        
+        drawFPS(figDetection, s);
+        s.reset;
     }
     
     destroyFigures();
@@ -212,4 +228,28 @@ RCArray!int indicesWithoutHoles(H)(const ref H hierarchy){
     }
     return rcarray!int(_ret.data);
 
+}
+
+void drawFPS(Figure fig, ref StopWatch s){
+    frameCount++;
+    elapsedTime += s.peek.total!"msecs";
+
+    // Calculate FPS if elapsed time is non-zero
+    if (elapsedTime > 0)
+    {
+        realTimeFPS = cast(double)frameCount / (elapsedTime / 1000.0); // Convert milliseconds to seconds
+    }
+    
+    import core.stdc.stdio;
+    char[32] buff;
+    snprintf(buff.ptr, buff.length, "FPS: %.2f\0", realTimeFPS);
+
+    fig.drawText(font, buff[], PlotPoint(20.0f, 20.0f),
+                0.0f, 30, plotGreen);
+    
+    if (elapsedTime > 1.0) {
+        frameCount = 0;
+        elapsedTime = 0.0;
+        //printf("%.2f\n", realTimeFPS);
+    }
 }

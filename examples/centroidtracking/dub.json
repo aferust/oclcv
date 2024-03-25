@@ -11,7 +11,8 @@
 		"bindbc-opencl": "~>0.1.0",
         "mir-algorithm": ">=3.15.3",
         "dcv:core": "~master",
-		"dcv:plot": "~master"
+		"dcv:plot": "~master",
+		"dplug:core": "*"
 	},
 	"subConfigurations": {
 		"dcv:plot": "use-glfw-d"
