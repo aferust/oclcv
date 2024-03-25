@@ -7,6 +7,7 @@ import oclcv.clcore;
 import dplug.core.nogc;
 
 final class StereoSGMCL{
+    @nogc nothrow:
 public:
     this(int height, int width, int disp_size, CLContext ctx){
 
@@ -40,7 +41,6 @@ public:
         return true;
     }
 
-    @nogc nothrow
     CLBuffer run(CLBuffer d_src_left, CLBuffer d_src_right){
         debug _assert(d_src_left.metaData.dataType == UBYTE, "left data type should be ubyte");
         debug _assert(d_src_right.metaData.dataType == UBYTE, "right data type should be ubyte");
@@ -53,14 +53,14 @@ public:
 
         //create buffers
 
-        auto d_left = mallocNew!CLBuffer(context_, BufferMeta(ULONG, height_, width_));
-        auto d_right = mallocNew!CLBuffer(context_, BufferMeta(ULONG, height_, width_));
-        auto d_matching_cost = mallocNew!CLBuffer(context_, BufferMeta(UBYTE, height_, width_, disp_size_));
-        auto d_scost = mallocNew!CLBuffer(context_, BufferMeta(USHORT, height_, width_, disp_size_));
-        auto d_left_disparity = mallocNew!CLBuffer(context_, BufferMeta(USHORT, height_, width_));
-        auto d_right_disparity = mallocNew!CLBuffer(context_, BufferMeta(USHORT, height_, width_));
-        auto d_tmp_left_disp = mallocNew!CLBuffer(context_, BufferMeta(USHORT, height_, width_));
-        auto d_tmp_right_disp = mallocNew!CLBuffer(context_, BufferMeta(USHORT, height_, width_));
+        d_left = mallocNew!CLBuffer(context_, BufferMeta(ULONG, height_, width_));
+        d_right = mallocNew!CLBuffer(context_, BufferMeta(ULONG, height_, width_));
+        d_matching_cost = mallocNew!CLBuffer(context_, BufferMeta(UBYTE, height_, width_, disp_size_));
+        d_scost = mallocNew!CLBuffer(context_, BufferMeta(USHORT, height_, width_, disp_size_));
+        d_left_disparity = mallocNew!CLBuffer(context_, BufferMeta(USHORT, height_, width_));
+        d_right_disparity = mallocNew!CLBuffer(context_, BufferMeta(USHORT, height_, width_));
+        d_tmp_left_disp = mallocNew!CLBuffer(context_, BufferMeta(USHORT, height_, width_));
+        d_tmp_right_disp = mallocNew!CLBuffer(context_, BufferMeta(USHORT, height_, width_));
 
         scope(exit){
             destroyFree(d_left);

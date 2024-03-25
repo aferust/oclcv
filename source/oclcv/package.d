@@ -10,4 +10,5 @@ public {
     import oclcv.convolution;
 
     import bc.string;
+    import dplug.core;
 }

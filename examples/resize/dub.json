@@ -9,10 +9,10 @@
 	"dependencies": {
         "oclcv": {"path": "../../"},
 		"bindbc-opencl": "~>0.1.0",
-        "mir-algorithm": ">=3.15.3",
-        "dcv:core": "~master",
-        "dcv:imageio": "~master",
-		"dcv:plot": "~master"
+        "mir-algorithm": "~>3.22.0",
+        "dcv:imageio": {"path": "D:/projects/d_projects/dub/packages/dcv"},
+		"dcv:core": {"path": "D:/projects/d_projects/dub/packages/dcv"},
+		"dcv:plot": {"path": "D:/projects/d_projects/dub/packages/dcv"}
 	},
 	"subConfigurations": {
 		"dcv:plot": "use-glfw-d"

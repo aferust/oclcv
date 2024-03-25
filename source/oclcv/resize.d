@@ -13,7 +13,7 @@ public:
         
         if(!initialize(ctx)){
             import core.stdc.stdlib, core.stdc.stdio;
-            printf("Problem initializing the OpenCL kernel %s", __FILE__);
+            printf("Problem initializing the OpenCL kernel %s", __FILE__.ptr);
             exit(-1);
         }
     }

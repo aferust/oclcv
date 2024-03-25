@@ -13,6 +13,8 @@
         "dcv:core": "~master",
         "dcv:imageio": "~master",
 		"dcv:plot": "~master"
-
+	},
+	"subConfigurations": {
+		"dcv:plot": "use-glfw-d"
 	}
 }

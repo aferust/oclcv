@@ -19,8 +19,8 @@ enum H = 480;
 
 void main()
 {
-    CLContext context = new CLContext;
-    context.clInfo().writeln;
+    CLContext context = mallocNew!CLContext;
+    scope(exit) destroyFree(context);
     
     
     // for video file as input
@@ -33,12 +33,15 @@ void main()
         "-pix_fmt", "rgb24", "-"], Redirect.stdout);
     
     // scope(exit) wait(pipes.pid);
-    auto conv = new RGB2GRAY(H, W, context);
-    auto d_rgb = new CLBuffer(context, BufferMeta(UBYTE, H, W, 3));
+    auto conv = mallocNew!RGB2GRAY(H, W, context);
+    scope(exit) destroyFree(conv);
+
+    auto d_rgb = mallocNew!CLBuffer(context, BufferMeta(UBYTE, H, W, 3));
+    scope(exit) destroyFree(d_rgb);
 
     // Process video frames
-    auto frame = slice!ubyte([H, W, 3], 0);
-    auto gray = slice!ubyte([H, W], 0);
+    auto frame = rcslice!ubyte([H, W, 3], 0);
+    auto gray = rcslice!ubyte([H, W], 0);
 
     auto figGray = imshow(gray, "gray");
 
@@ -58,10 +61,12 @@ void main()
         if (dt.length != H*W*3) break;
 
         d_rgb.upload(frame.ptr[0..frame.elementCount]);
+
         auto d_gray = conv.run(d_rgb);
+        scope(exit) destroyFree(d_gray);
         d_gray.download(gray.ptr[0..gray.elementCount]);
 
-        figGray.draw(gray, ImageFormat.IF_MONO);
+        figGray.draw(gray);
         
         int wait = max(1, cast(int)waitFrame - cast(int)s.peek.total!"msecs");
         
@@ -72,5 +77,4 @@ void main()
             break;
     }
     destroyFigures();
-    
 }
