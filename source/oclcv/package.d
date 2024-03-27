@@ -8,6 +8,7 @@ public {
     import oclcv.morphed;
     import oclcv.resize;
     import oclcv.convolution;
+    import oclcv.median;
 
     import bc.string;
     import dplug.core;

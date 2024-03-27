@@ -5,11 +5,10 @@
 	"copyright": "Copyright © 2023, user",
 	"description": "A minimal D application.",
 	"license": "boost",
-	"name": "convolution",
+	"name": "median2d",
 	"dependencies": {
         "oclcv": {"path": "../../"},
 		"bindbc-opencl": "~>0.1.0",
-        "mir-algorithm": ">=3.15.3",
         "dcv:imageio": {"path": "D:/projects/d_projects/dub/packages/dcv"},
 		"dcv:core": {"path": "D:/projects/d_projects/dub/packages/dcv"},
 		"dcv:plot": {"path": "D:/projects/d_projects/dub/packages/dcv"}

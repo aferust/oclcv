@@ -456,8 +456,31 @@ public:
         cl_device_id dev_id = context_.getDevId();
         err = clBuildProgram(cl_program_, 1, &dev_id, cop.data.ptr, null, null);
 
-        handleError(err, RCStringZ.from(nogcFormat!"building program with source: %s\nUsing compilation options: %s\n"(
-            source, compilation_options)));
+        cl_build_status build_status;
+        clGetProgramBuildInfo(cl_program_, context_.getDevId(), 
+            CL_PROGRAM_BUILD_STATUS, cl_build_status.sizeof, &build_status, null);
+
+        if (build_status == CL_BUILD_PROGRAM_FAILURE) {
+            // Get the build log size
+            size_t _log_size;
+            clGetProgramBuildInfo(cl_program_, context_.getDevId(), CL_PROGRAM_BUILD_LOG, 0, null, &_log_size);
+
+            // Allocate memory for the log
+            char *log = cast(char*)malloc(_log_size);
+
+            // Get the build log
+            clGetProgramBuildInfo(cl_program_, context_.getDevId(), CL_PROGRAM_BUILD_LOG, _log_size, log, null);
+
+            // Print the build log
+            printf("Build log:\n%s\n", log);
+
+            // Free the allocated memory
+            free(log);
+            exit(-1);
+        }
+
+        /*handleError(err, RCStringZ.from(nogcFormat!"building program with source: %s\nUsing compilation options: %s\n"(
+            source, compilation_options)));*/
         return true;
     }
 
@@ -470,6 +493,7 @@ public:
         if(err != CL_SUCCESS){
             char* build_log;
             size_t log_size = 0;
+
             clGetProgramBuildInfo(cl_program_, context_.getDevId(),
                                 CL_PROGRAM_BUILD_LOG, 0, null, &log_size);
             build_log = cast(char*)malloc(char.sizeof * log_size);
@@ -662,5 +686,6 @@ enum CTKernel {
     KCOUNTNONZERO = import("countnonzero.cl"),
     KMORPHED = import("morphed.cl"),
     KRESIZE = import("resize.cl"),
-    KCONV = import("convolution.cl")
+    KCONV = import("convolution.cl"),
+    KMEDIAN = import("medianfilteropencv.cl")
 }
