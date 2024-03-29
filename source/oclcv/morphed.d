@@ -47,14 +47,20 @@ public:
         return true;
     }
     
-    CLBuffer run(CLBuffer d_src_mono){
+    CLBuffer run(CLBuffer d_src_mono, CLBuffer ownedBuffer = null){
 
         import core.stdc.math : ceil;
 
         debug _assert(d_src_mono.metaData.dataType == UBYTE, "Input type must be ubyte"); 
         debug _assert(d_src_mono.metaData.numberOfChannels == 1, "Input's channel count must be 1");
 
-        CLBuffer d_output = mallocNew!CLBuffer(context_, BufferMeta(UBYTE, height_, width_, 1));
+        CLBuffer d_output;
+        if(ownedBuffer is null){
+            d_output = mallocNew!CLBuffer(context_, BufferMeta(UBYTE, height_, width_, 1));
+        } else {
+            d_output = ownedBuffer;
+        }
+         
         CLBuffer d_tmp = mallocNew!CLBuffer(context_, BufferMeta(UBYTE, height_, width_, 1));
 
         tile_w = width_;
@@ -93,7 +99,6 @@ private:
     CLContext context_;
     CLProgram prog_;
     
-    //CLKernel _kernel;
     CLKernel _kernel_step1;
     CLKernel _kernel_step2;
     MORPH_OP _op;
